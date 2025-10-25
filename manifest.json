@@ -41,7 +41,12 @@
       "resources": [
         "images/*",
         "css/*",
-        "js/floating-icon.js"
+        "js/floating-icon.js",
+        "popup.html",
+        "js/popup.js",
+        "js/dexie.min.js",
+        "css/fontawesome.css",
+        "webfonts/*"
       ],
       "matches": ["<all_urls>"]
     }

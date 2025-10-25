@@ -447,7 +447,7 @@ function loadConversationHistory() {
   const conversationsList = document.getElementById('conversationsList');
   conversationsList.innerHTML = `
     <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-      <ion-icon name="chatbubbles-outline" style="font-size: 48px; margin-bottom: 16px;"></ion-icon>
+      <i class="far fa-comments" style="font-size: 48px; margin-bottom: 16px;"></i>
       <p>Conversation history will be available once DexieJS is integrated.</p>
     </div>
   `;

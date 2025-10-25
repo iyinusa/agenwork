@@ -6,8 +6,7 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting",
-    "aiOriginTrial"
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -24,7 +23,18 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "images/icon.png"
+    "default_icon": {
+      "16": "images/agenwork.png",
+      "32": "images/agenwork.png",
+      "48": "images/agenwork.png",
+      "128": "images/agenwork.png"
+    }
+  },
+  "icons": {
+    "16": "images/agenwork.png",
+    "32": "images/agenwork.png",
+    "48": "images/agenwork.png",
+    "128": "images/agenwork.png"
   },
   "web_accessible_resources": [
     {

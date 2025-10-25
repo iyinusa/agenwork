@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgenWork</title>
+    <link rel="stylesheet" href="css/popup.css">
+    <link rel="stylesheet" href="webfonts/fira-sans.css">
+</head>
+<body>
+    <div class="agenwork-container">
+        <!-- Header -->
+        <header class="agenwork-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo">
+                        <ion-icon name="chatbubble-ellipses"></ion-icon>
+                    </div>
+                    <h1 class="app-title">AgenWork</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="settingsBtn" class="icon-btn" title="Settings">
+                        <ion-icon name="settings-outline"></ion-icon>
+                    </button>
+                    <button id="historyBtn" class="icon-btn" title="Conversation History">
+                        <ion-icon name="time-outline"></ion-icon>
+                    </button>
+                    <button id="floatingToggle" class="icon-btn" title="Toggle Floating Icon">
+                        <ion-icon name="eye-outline"></ion-icon>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="agenwork-main">
+            <!-- Chat View -->
+            <div id="chatView" class="view active">
+                <div class="chat-container">
+                    <div id="messagesContainer" class="messages-container">
+                        <div class="welcome-message">
+                            <div class="welcome-icon">
+                                <ion-icon name="sparkles"></ion-icon>
+                            </div>
+                            <h2>Welcome to AgenWork</h2>
+                            <p>Your smart browsing assistant powered by Chrome's built-in AI. Ask me anything!</p>
+                            <div class="quick-actions">
+                                <button class="quick-action-btn" data-action="summarize">
+                                    <ion-icon name="document-text-outline"></ion-icon>
+                                    Summarize Page
+                                </button>
+                                <button class="quick-action-btn" data-action="translate">
+                                    <ion-icon name="language-outline"></ion-icon>
+                                    Translate
+                                </button>
+                                <button class="quick-action-btn" data-action="write">
+                                    <ion-icon name="create-outline"></ion-icon>
+                                    Help Write
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-area">
+                        <div class="input-container">
+                            <input type="text" id="messageInput" placeholder="Ask AgenWork anything..." autocomplete="off">
+                            <button id="sendBtn" class="send-btn">
+                                <ion-icon name="send"></ion-icon>
+                            </button>
+                        </div>
+                        <div class="typing-indicator" id="typingIndicator">
+                            <div class="typing-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <span class="typing-text">AgenWork is thinking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History View -->
+            <div id="historyView" class="view">
+                <div class="view-header">
+                    <button id="backFromHistory" class="back-btn">
+                        <ion-icon name="arrow-back"></ion-icon>
+                        Back to Chat
+                    </button>
+                    <h2>Conversation History</h2>
+                </div>
+                <div class="history-container">
+                    <div id="conversationsList" class="conversations-list">
+                        <!-- Conversations will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settingsView" class="view">
+                <div class="view-header">
+                    <button id="backFromSettings" class="back-btn">
+                        <ion-icon name="arrow-back"></ion-icon>
+                        Back to Chat
+                    </button>
+                    <h2>Settings</h2>
+                </div>
+                <div class="settings-container">
+                    <!-- General Settings -->
+                    <div class="settings-section">
+                        <h3>General</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label for="themeSelect">Theme</label>
+                                <p>Choose your preferred appearance</p>
+                            </div>
+                            <select id="themeSelect" class="setting-control">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                                <option value="auto">Auto</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label for="floatingIconToggle">Floating Icon</label>
+                                <p>Show floating icon on web pages</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="floatingIconToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- AI Agents Settings -->
+                    <div class="settings-section">
+                        <h3>AI Agents</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label for="summarizerToggle">Summarizer Agent</label>
+                                <p>Enable AI-powered content summarization</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="summarizerToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label for="translatorToggle">Translator Agent</label>
+                                <p>Enable real-time translation capabilities</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="translatorToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label for="writerToggle">Writer Agent</label>
+                                <p>Enable AI writing assistance</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="writerToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label for="prompterToggle">Prompter Agent</label>
+                                <p>Enable natural language processing</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="prompterToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Privacy Settings -->
+                    <div class="settings-section">
+                        <h3>Privacy</h3>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Data Storage</label>
+                                <p>All conversations are stored locally on your device</p>
+                            </div>
+                            <button id="clearDataBtn" class="danger-btn">Clear All Data</button>
+                        </div>
+                    </div>
+
+                    <!-- About Section -->
+                    <div class="settings-section">
+                        <h3>About</h3>
+                        <div class="about-content">
+                            <p><strong>AgenWork v1.0.0</strong></p>
+                            <p>A smart browsing agent powered by Chrome's built-in AI APIs</p>
+                            <div class="about-links">
+                                <a href="#" class="about-link">Privacy Policy</a>
+                                <a href="#" class="about-link">Terms of Service</a>
+                                <a href="#" class="about-link">Support</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div id="statusIndicator" class="status-indicator">
+                <div class="status-dot"></div>
+                <span class="status-text">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <script src="js/dexie.min.js"></script>
+    <script src="js/popup.js"></script>
+</body>
+</html>

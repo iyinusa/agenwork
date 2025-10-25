@@ -1,2 +1,0 @@
-# agenwork
-Your Browsing Agent

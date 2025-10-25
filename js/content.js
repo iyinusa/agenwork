@@ -55,7 +55,7 @@ console.log('AgenWork content script loaded');
     floatingIcon.id = 'agenwork-floating-icon';
     floatingIcon.innerHTML = `
       <div class="agenwork-floating-btn">
-        <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
+        <i class="fas fa-comments"></i>
       </div>
     `;
     
@@ -104,8 +104,8 @@ console.log('AgenWork content script loaded');
     // Append to body
     document.body.appendChild(floatingIcon);
     
-    // Load Ionic icons if not already loaded
-    loadIonicIcons();
+    // Load FontAwesome CSS if not already loaded
+    loadFontAwesome();
   }
   
   // Remove floating icon
@@ -200,7 +200,7 @@ console.log('AgenWork content script loaded');
         <div class="agenwork-input-area">
           <input type="text" placeholder="Ask AgenWork anything..." class="agenwork-input">
           <button class="agenwork-send-btn">
-            <ion-icon name="send-outline"></ion-icon>
+            <i class="far fa-paper-plane"></i>
           </button>
         </div>
       </div>
@@ -229,18 +229,13 @@ console.log('AgenWork content script loaded');
     document.body.appendChild(chatInterface);
   }
   
-  // Load Ionic icons
-  function loadIonicIcons() {
-    if (!document.querySelector('script[src*="ionicons"]')) {
-      const script = document.createElement('script');
-      script.type = 'module';
-      script.src = 'https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js';
-      document.head.appendChild(script);
-      
-      const nomoduleScript = document.createElement('script');
-      nomoduleScript.noModule = true;
-      nomoduleScript.src = 'https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js';
-      document.head.appendChild(nomoduleScript);
+  // Load FontAwesome CSS for content script
+  function loadFontAwesome() {
+    if (!document.querySelector('link[href*="fontawesome"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = chrome.runtime.getURL('css/fontawesome.css');
+      document.head.appendChild(link);
     }
   }
   

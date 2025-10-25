@@ -5,7 +5,7 @@
 :root {
   /* Light Theme Colors */
   --primary-color: #667eea;
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-gradient: linear-gradient(135deg, #5e5e5e 0%, #bababa 100%);
   --secondary-color: #f8f9fa;
   --background-color: #ffffff;
   --surface-color: #f8f9fa;
@@ -75,7 +75,7 @@ body {
   font-size: var(--font-size-base);
   color: var(--text-primary);
   background: var(--background-color);
-  width: 400px;
+  width: 650px;
   height: 600px;
   overflow: hidden;
 }
@@ -83,6 +83,7 @@ body {
 /* Container */
 .agenwork-container {
   height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   background: var(--background-color);
@@ -108,6 +109,10 @@ body {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+}
+
+.logo-section img {
+    height: 60px;
 }
 
 .logo {
@@ -156,6 +161,14 @@ body {
   transform: scale(0.95);
 }
 
+/* Ensure FontAwesome icons render properly */
+.icon-btn i {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: inherit;
+  color: inherit;
+}
+
 /* Main Content */
 .agenwork-main {
   flex: 1;
@@ -202,17 +215,13 @@ body {
   padding: var(--spacing-xl) var(--spacing-md);
 }
 
-.welcome-icon {
+.welcome-icon, .welcome-icon img {
   width: 60px;
   height: 60px;
-  background: var(--primary-gradient);
-  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--spacing-md);
-  font-size: var(--font-size-2xl);
-  color: white;
 }
 
 .welcome-message h2 {
@@ -256,7 +265,7 @@ body {
   transform: translateY(-1px);
 }
 
-.quick-action-btn ion-icon {
+.quick-action-btn i {
   font-size: var(--font-size-lg);
   color: var(--primary-color);
 }
@@ -724,9 +733,9 @@ input:checked + .toggle-slider:before {
 }
 
 /* Responsive Design */
-@media (max-width: 400px) {
+@media (max-width: 500px) {
   body {
-    width: 320px;
+    width: 400px;
   }
   
   .header-content {

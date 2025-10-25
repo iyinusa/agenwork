@@ -7,7 +7,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   
   // Initialize default settings
   chrome.storage.local.set({
-    isFloatingIconEnabled: false,
+    isFloatingIconEnabled: true, // Enable by default for better UX
     theme: 'light',
     aiSettings: {
       summarizer: true,
@@ -16,6 +16,26 @@ chrome.runtime.onInstalled.addListener((details) => {
       prompter: true
     }
   });
+  
+  // Inject floating icon into all existing tabs if enabled
+  if (details.reason === 'install') {
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+          try {
+            chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['js/floating-icon.js']
+            }).catch(err => {
+              console.log('Could not inject into tab:', tab.url, err);
+            });
+          } catch (error) {
+            console.log('Could not inject into tab:', tab.url, error);
+          }
+        }
+      });
+    });
+  }
 });
 
 // Extension startup
@@ -29,13 +49,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   
   switch (message.type) {
     case 'TOGGLE_FLOATING_ICON':
-      handleFloatingIconToggle(message.enabled, sender.tab.id);
-      sendResponse({ success: true });
+      // Check if sender has a tab (messages from popup don't have tabs)
+      if (sender.tab && sender.tab.id) {
+        handleFloatingIconToggle(message.enabled, sender.tab.id);
+        sendResponse({ success: true });
+      } else {
+        // If no tab, toggle on all tabs or current active tab
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0]) {
+            handleFloatingIconToggle(message.enabled, tabs[0].id);
+            sendResponse({ success: true });
+          } else {
+            sendResponse({ success: false, error: 'No active tab found' });
+          }
+        });
+        return true; // Keep message channel open for async response
+      }
       break;
       
     case 'GET_SETTINGS':
       chrome.storage.local.get(['isFloatingIconEnabled', 'theme', 'aiSettings'], (result) => {
-        sendResponse(result);
+        if (chrome.runtime.lastError) {
+          console.error('Error getting settings:', chrome.runtime.lastError);
+          sendResponse({ isFloatingIconEnabled: true }); // Default fallback
+        } else {
+          sendResponse(result);
+        }
       });
       return true; // Keep message channel open for async response
       
@@ -50,6 +89,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         .then(session => sendResponse({ success: true, session }))
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
+      
+    case 'OPEN_POPUP_FROM_FLOATING':
+      // Try to open the extension popup
+      try {
+        chrome.action.openPopup();
+        sendResponse({ success: true });
+      } catch (error) {
+        console.log('Cannot open popup programmatically, falling back to inline interface');
+        sendResponse({ success: false, fallback: true });
+      }
+      break;
       
     default:
       console.warn('Unknown message type:', message.type);
@@ -66,6 +116,8 @@ async function handleFloatingIconToggle(enabled, tabId) {
         target: { tabId: tabId },
         files: ['js/floating-icon.js']
       });
+      
+      console.log('Floating icon injected into tab:', tabId);
     } else {
       // Remove floating icon from the current tab
       await chrome.scripting.executeScript({
@@ -73,16 +125,24 @@ async function handleFloatingIconToggle(enabled, tabId) {
         func: () => {
           const floatingIcon = document.getElementById('agenwork-floating-icon');
           if (floatingIcon) {
-            floatingIcon.remove();
+            floatingIcon.style.animation = 'slideOutToRight 0.3s ease forwards';
+            setTimeout(() => {
+              floatingIcon.remove();
+            }, 300);
           }
+          // Reset the loaded flag so it can be injected again
+          window.agenworkFloatingIconLoaded = false;
         }
       });
+      
+      console.log('Floating icon removed from tab:', tabId);
     }
     
     // Update storage
     chrome.storage.local.set({ isFloatingIconEnabled: enabled });
   } catch (error) {
     console.error('Error toggling floating icon:', error);
+    throw error;
   }
 }
 

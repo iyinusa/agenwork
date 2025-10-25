@@ -10,454 +10,418 @@
   }
   window.agenworkFloatingIconLoaded = true;
   
-  // Create floating icon
-  function createFloatingIcon() {
-    // Remove existing icon if present
-    const existingIcon = document.getElementById('agenwork-floating-icon');
-    if (existingIcon) {
-      existingIcon.remove();
-    }
-    
-    // Create floating icon element
-    const floatingIcon = document.createElement('div');
-    floatingIcon.id = 'agenwork-floating-icon';
-    floatingIcon.innerHTML = `
-      <div class="agenwork-floating-btn">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
-        </svg>
-      </div>
-    `;
-    
-    // Add styles
-    const styles = `
-      position: fixed;
-      top: 50%;
-      right: 20px;
-      width: 60px;
-      height: 60px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 50%;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.1);
-      cursor: move;
-      z-index: 999999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 24px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      user-select: none;
-      backdrop-filter: blur(10px);
-      transform: translateY(-50%);
-    `;
-    
-    floatingIcon.style.cssText = styles;
-    
-    // Add hover effects
-    floatingIcon.addEventListener('mouseenter', () => {
-      floatingIcon.style.transform = 'translateY(-50%) scale(1.1)';
-      floatingIcon.style.boxShadow = '0 6px 30px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.2)';
-    });
-    
-    floatingIcon.addEventListener('mouseleave', () => {
-      floatingIcon.style.transform = 'translateY(-50%) scale(1)';
-      floatingIcon.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.1)';
-    });
-    
-    // Make it draggable
-    makeDraggable(floatingIcon);
-    
-    // Add click handler
-    let clickTimeout;
-    floatingIcon.addEventListener('mousedown', () => {
-      clickTimeout = setTimeout(() => {
-        // This is a drag, not a click
-      }, 150);
-    });
-    
-    floatingIcon.addEventListener('mouseup', (e) => {
-      clearTimeout(clickTimeout);
-      if (!floatingIcon.classList.contains('dragging')) {
-        openAgenWorkInterface();
-      }
-    });
-    
-    // Append to body
-    document.body.appendChild(floatingIcon);
-    
-    // Animate in
-    requestAnimationFrame(() => {
-      floatingIcon.style.opacity = '0';
-      floatingIcon.style.transform = 'translateY(-50%) scale(0.5)';
-      
-      requestAnimationFrame(() => {
-        floatingIcon.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-        floatingIcon.style.opacity = '1';
-        floatingIcon.style.transform = 'translateY(-50%) scale(1)';
-      });
-    });
-    
-    return floatingIcon;
-  }
+  // Variables to track dragging and modal state
+  let isDragging = false;
+  let offsetX, offsetY;
+  let isModalOpen = false;
+  let modalIsDragging = false;
+  let modalOffsetX, modalOffsetY;
   
-  // Make element draggable
-  function makeDraggable(element) {
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let initialX = 0;
-    let initialY = 0;
-    
-    element.addEventListener('mousedown', startDrag);
-    
-    function startDrag(e) {
-      startX = e.clientX;
-      startY = e.clientY;
-      
-      const rect = element.getBoundingClientRect();
-      initialX = rect.left;
-      initialY = rect.top;
-      
-      document.addEventListener('mousemove', drag);
-      document.addEventListener('mouseup', stopDrag);
-      
-      element.style.cursor = 'grabbing';
-      e.preventDefault();
-    }
-    
-    function drag(e) {
-      if (!isDragging) {
-        const distance = Math.sqrt(
-          Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2)
-        );
-        
-        if (distance > 5) {
-          isDragging = true;
-          element.classList.add('dragging');
-        }
-      }
-      
-      if (isDragging) {
-        const deltaX = e.clientX - startX;
-        const deltaY = e.clientY - startY;
-        
-        let newX = initialX + deltaX;
-        let newY = initialY + deltaY;
-        
-        // Keep within viewport bounds
-        const maxX = window.innerWidth - element.offsetWidth;
-        const maxY = window.innerHeight - element.offsetHeight;
-        
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
-        
-        element.style.left = newX + 'px';
-        element.style.top = newY + 'px';
-        element.style.right = 'auto';
-        element.style.transform = 'none';
-      }
-    }
-    
-    function stopDrag() {
-      document.removeEventListener('mousemove', drag);
-      document.removeEventListener('mouseup', stopDrag);
-      element.style.cursor = 'move';
-      
-      // Snap to edges
-      if (isDragging) {
-        snapToEdge(element);
-      }
-      
-      // Small delay to prevent click event after drag
-      setTimeout(() => {
-        isDragging = false;
-        element.classList.remove('dragging');
-      }, 100);
-    }
-  }
+  // Button position (will be stored in localStorage)
+  let buttonPosition = {
+    left: '20px',
+    top: '50%',
+    transform: 'translateY(-50%)'
+  };
   
-  // Snap floating icon to nearest edge
-  function snapToEdge(element) {
-    const rect = element.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    
-    // Determine which edge is closest
-    const distanceToLeft = centerX;
-    const distanceToRight = windowWidth - centerX;
-    const distanceToTop = centerY;
-    const distanceToBottom = windowHeight - centerY;
-    
-    const minDistance = Math.min(distanceToLeft, distanceToRight, distanceToTop, distanceToBottom);
-    
-    let targetX = rect.left;
-    let targetY = rect.top;
-    
-    if (minDistance === distanceToLeft) {
-      targetX = 20;
-    } else if (minDistance === distanceToRight) {
-      targetX = windowWidth - rect.width - 20;
-    } else if (minDistance === distanceToTop) {
-      targetY = 20;
-    } else {
-      targetY = windowHeight - rect.height - 20;
-    }
-    
-    // Animate to target position
-    element.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-    element.style.left = targetX + 'px';
-    element.style.top = targetY + 'px';
-    
-    // Remove transition after animation
-    setTimeout(() => {
-      element.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-    }, 300);
-  }
+  // Modal position
+  let modalPosition = {
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)'
+  };
   
-  // Open AgenWork interface
-  function openAgenWorkInterface() {
-    // Try to open the extension popup (if supported)
+  // Initialize the floating button
+  function initFloatingButton() {
+    // Check if button should be visible based on user preference
     try {
       chrome.runtime.sendMessage({
-        type: 'OPEN_POPUP_FROM_FLOATING'
+        type: 'GET_SETTINGS'
+      }, response => {
+        // Check for chrome.runtime.lastError
+        if (chrome.runtime.lastError) {
+          console.log('Chrome runtime error:', chrome.runtime.lastError.message);
+          initButton(); // Initialize anyway as fallback
+          return;
+        }
+        
+        if (response && response.isFloatingIconEnabled) {
+          initButton();
+        }
       });
     } catch (error) {
-      // Fallback: create inline interface
-      createInlineInterface();
+      console.log('Chrome runtime not available, initializing floating button anyway');
+      initButton();
     }
   }
   
-  // Create inline chat interface
-  function createInlineInterface() {
-    // Remove existing interface if present
-    const existing = document.getElementById('agenwork-inline-interface');
-    if (existing) {
-      existing.remove();
+  function initButton() {
+    // Check if the button already exists
+    if (document.querySelector('#agenwork-floating-icon')) {
       return;
     }
     
-    const interfaceElement = document.createElement('div');
-    interfaceElement.id = 'agenwork-inline-interface';
-    interfaceElement.innerHTML = `
-      <div class="agenwork-interface-header">
-        <div class="agenwork-interface-title">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
-          </svg>
-          AgenWork
-        </div>
-        <button class="agenwork-interface-close">&times;</button>
-      </div>
-      <div class="agenwork-interface-body">
-        <div class="agenwork-interface-messages">
-          <div class="agenwork-welcome-message">
-            <p>👋 Hi! I'm AgenWork, your smart browsing assistant.</p>
-            <p>I can help you summarize content, translate text, assist with writing, and more!</p>
-          </div>
-        </div>
-        <div class="agenwork-interface-input">
-          <input type="text" placeholder="Ask me anything..." class="agenwork-input-field">
-          <button class="agenwork-send-button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    `;
+    // Create the button with animation delay to allow page to load first
+    setTimeout(() => {
+      const button = document.createElement('div');
+      button.id = 'agenwork-floating-icon';
+      button.className = 'agenwork-floating-button';
+      button.title = 'AgenWork Assistant';
+      button.innerHTML = '<img src="' + (chrome.runtime ? chrome.runtime.getURL('images/icon.png') : 'images/icon.png') + '" alt="AgenWork" style="width: 32px; height: 32px; color: white;">';
+      
+      // Load position from localStorage
+      const savedPosition = localStorage.getItem('agenwork-button-position');
+      if (savedPosition) {
+        try {
+          buttonPosition = JSON.parse(savedPosition);
+        } catch (e) {
+          console.log('Could not parse saved position, using default');
+        }
+      }
+      
+      // Apply styles and position
+      applyButtonStyles(button);
+      
+      // Add animations CSS if not already present
+      if (!document.getElementById('agenwork-floating-animations')) {
+        addFloatingAnimations();
+      }
+      
+      // Create modal components
+      const modalElements = createModal();
+      
+      // Button mouse events for drag and click detection
+      button.addEventListener('mousedown', handleButtonMouseDown);
+      
+      // Append the elements to the body
+      document.body.appendChild(button);
+      document.body.appendChild(modalElements.overlay);
+      document.body.appendChild(modalElements.modal);
+      
+      // Add entrance animation for the button
+      animateButtonIn(button);
+    }, 1000);
+  }
+  
+  function applyButtonStyles(button) {
+    button.style.cssText = 'position: fixed; width: 60px; height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25), 0 0 0 1px rgba(255,255,255,0.1); cursor: pointer; z-index: 999999; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 2px solid rgba(255, 255, 255, 0.2); animation: agenworkPulse 3s ease-in-out infinite; touch-action: none;';
     
-    // Style the interface
-    const interfaceStyles = `
-      position: fixed;
-      top: 50%;
-      right: 100px;
-      width: 350px;
-      height: 500px;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
-      z-index: 1000000;
-      transform: translateY(-50%);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      overflow: hidden;
-      backdrop-filter: blur(10px);
-      animation: slideInFromRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    `;
+    button.style.left = buttonPosition.left;
+    button.style.top = buttonPosition.top;
+    if (buttonPosition.transform) {
+      button.style.transform = buttonPosition.transform;
+    }
+  }
+  
+  function createModal() {
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'agenwork-overlay';
+    overlay.className = 'agenwork-overlay';
     
-    interfaceElement.style.cssText = interfaceStyles;
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'agenwork-modal';
+    modal.className = 'agenwork-modal';
+    modal.style.top = modalPosition.top;
+    modal.style.left = modalPosition.left;
+    modal.style.transform = modalPosition.transform;
     
-    // Add interface styles to document
-    if (!document.getElementById('agenwork-interface-styles')) {
-      const styleSheet = document.createElement('style');
-      styleSheet.id = 'agenwork-interface-styles';
-      styleSheet.textContent = `
-        @keyframes slideInFromRight {
-          from {
-            opacity: 0;
-            transform: translateY(-50%) translateX(100%);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(-50%) translateX(0);
-          }
-        }
-        
-        .agenwork-interface-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          padding: 16px 20px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-weight: 600;
-        }
-        
-        .agenwork-interface-title {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        
-        .agenwork-interface-close {
-          background: none;
-          border: none;
-          color: white;
-          font-size: 24px;
-          cursor: pointer;
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background 0.2s ease;
-        }
-        
-        .agenwork-interface-close:hover {
-          background: rgba(255,255,255,0.2);
-        }
-        
-        .agenwork-interface-body {
-          height: calc(100% - 64px);
-          display: flex;
-          flex-direction: column;
-        }
-        
-        .agenwork-interface-messages {
-          flex: 1;
-          padding: 20px;
-          overflow-y: auto;
-          background: #f8f9fa;
-        }
-        
-        .agenwork-welcome-message {
-          text-align: center;
-          color: #6c757d;
-          font-size: 14px;
-          line-height: 1.5;
-        }
-        
-        .agenwork-welcome-message p {
-          margin-bottom: 12px;
-        }
-        
-        .agenwork-interface-input {
-          padding: 16px;
-          background: white;
-          border-top: 1px solid #e9ecef;
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
-        
-        .agenwork-input-field {
-          flex: 1;
-          padding: 12px 16px;
-          border: 1px solid #e9ecef;
-          border-radius: 24px;
-          outline: none;
-          font-size: 14px;
-          transition: border-color 0.2s ease;
-        }
-        
-        .agenwork-input-field:focus {
-          border-color: #667eea;
-        }
-        
-        .agenwork-send-button {
-          width: 40px;
-          height: 40px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          border-radius: 50%;
-          color: white;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: transform 0.2s ease;
-        }
-        
-        .agenwork-send-button:hover {
-          transform: scale(1.05);
-        }
-      `;
-      document.head.appendChild(styleSheet);
+    // Modal header for dragging
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'agenwork-modal-header';
+    
+    // Modal title
+    const modalTitle = document.createElement('div');
+    modalTitle.className = 'agenwork-modal-title';
+    modalTitle.innerHTML = '';
+    
+    // Close button
+    const closeButton = document.createElement('button');
+    closeButton.className = 'agenwork-close-btn';
+    closeButton.innerHTML = 'X';
+    closeButton.setAttribute('aria-label', 'Close');
+    
+    // Create iframe for the popup content
+    const iframe = document.createElement('iframe');
+    iframe.className = 'agenwork-iframe';
+    
+    // Set iframe source to the popup.html
+    try {
+      const extensionUrl = chrome.runtime.getURL('');
+      iframe.src = extensionUrl + 'popup.html';
+    } catch (error) {
+      iframe.src = 'popup.html';
     }
     
     // Add event listeners
-    const closeBtn = interfaceElement.querySelector('.agenwork-interface-close');
-    closeBtn.addEventListener('click', function() {
-      interfaceElement.style.animation = 'slideInFromRight 0.3s reverse';
-      setTimeout(() => interfaceElement.remove(), 300);
-    });
-    
-    const inputField = interfaceElement.querySelector('.agenwork-input-field');
-    const sendButton = interfaceElement.querySelector('.agenwork-send-button');
-    
-    function sendMessage() {
-      const message = inputField.value.trim();
-      if (!message) return;
-      
-      // This would integrate with the main extension logic
-      console.log('Sending message from floating interface:', message);
-      inputField.value = '';
-      
-      // Show a simple response for now
-      const messagesContainer = interfaceElement.querySelector('.agenwork-interface-messages');
-      messagesContainer.innerHTML += `
-        <div style="margin-bottom: 12px; text-align: right;">
-          <div style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 12px; border-radius: 16px; font-size: 14px; max-width: 80%;">
-            ${message}
-          </div>
-        </div>
-        <div style="margin-bottom: 12px;">
-          <div style="display: inline-block; background: white; border: 1px solid #e9ecef; color: #333; padding: 8px 12px; border-radius: 16px; font-size: 14px; max-width: 80%;">
-            Thanks for your message! The full AI integration will be available in the complete extension.
-          </div>
-        </div>
-      `;
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-    
-    sendButton.addEventListener('click', sendMessage);
-    inputField.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        sendMessage();
+    iframe.addEventListener('load', () => {
+      iframe.classList.add('loaded');
+      try {
+        iframe.contentWindow.postMessage({
+          type: 'FLOATING_MODE',
+          enabled: true
+        }, '*');
+      } catch (e) {
+        console.log('Could not send message to iframe:', e);
       }
     });
     
-    document.body.appendChild(interfaceElement);
+    // Assemble the modal
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+    modal.appendChild(modalHeader);
+    modal.appendChild(iframe);
     
-    // Focus input field
-    setTimeout(() => inputField.focus(), 100);
+    // Event handlers
+    closeButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeModal();
+    });
+    
+    modalHeader.addEventListener('mousedown', handleModalMouseDown);
+    
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeModal();
+      }
+    });
+    
+    return { overlay, modal };
   }
   
-  // Create the floating icon
-  createFloatingIcon();
+  function animateButtonIn(button) {
+    button.style.opacity = '0';
+    button.style.transform = (buttonPosition.transform || 'translateY(-50%)') + ' scale(0.8)';
+    
+    setTimeout(() => {
+      button.style.opacity = '1';
+      button.style.transform = (buttonPosition.transform || 'translateY(-50%)') + ' scale(1)';
+    }, 100);
+  }
+  
+  function handleButtonMouseDown(e) {
+    if (e.button !== 0) return;
+    
+    e.preventDefault();
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const button = e.currentTarget;
+    const rect = button.getBoundingClientRect();
+    
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    
+    button.classList.add('active');
+    
+    const moveHandler = (moveEvent) => {
+      if (!isDragging && 
+          (Math.abs(moveEvent.clientX - startX) > 5 || 
+           Math.abs(moveEvent.clientY - startY) > 5)) {
+        isDragging = true;
+        button.classList.add('dragging');
+        button.style.animation = 'none';
+      }
+      
+      if (isDragging) {
+        moveEvent.preventDefault();
+        
+        const newLeft = Math.max(0, Math.min(window.innerWidth - button.offsetWidth, moveEvent.clientX - offsetX));
+        const newTop = Math.max(0, Math.min(window.innerHeight - button.offsetHeight, moveEvent.clientY - offsetY));
+        
+        button.style.left = newLeft + 'px';
+        button.style.top = newTop + 'px';
+        button.style.transform = 'none';
+        
+        buttonPosition = {
+          left: newLeft + 'px',
+          top: newTop + 'px',
+          transform: 'none'
+        };
+      }
+    };
+    
+    const upHandler = () => {
+      document.removeEventListener('mousemove', moveHandler);
+      document.removeEventListener('mouseup', upHandler);
+      
+      button.classList.remove('active');
+      button.classList.remove('dragging');
+      
+      if (isDragging) {
+        localStorage.setItem('agenwork-button-position', JSON.stringify(buttonPosition));
+        isDragging = false;
+        
+        setTimeout(() => {
+          button.style.animation = 'agenworkPulse 3s ease-in-out infinite';
+        }, 300);
+      } else {
+        toggleModal();
+      }
+    };
+    
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+  }
+  
+  function handleModalMouseDown(e) {
+    if (e.button !== 0 || e.target.closest('.agenwork-close-btn')) return;
+    
+    e.preventDefault();
+    modalIsDragging = true;
+    
+    const modal = document.querySelector('#agenwork-modal');
+    const rect = modal.getBoundingClientRect();
+    
+    modalOffsetX = e.clientX - rect.left;
+    modalOffsetY = e.clientY - rect.top;
+    
+    modal.style.transform = 'none';
+    
+    const modalMoveHandler = (moveEvent) => {
+      if (modalIsDragging) {
+        moveEvent.preventDefault();
+        
+        const modal = document.querySelector('#agenwork-modal');
+        const newLeft = Math.max(0, Math.min(window.innerWidth - modal.offsetWidth, moveEvent.clientX - modalOffsetX));
+        const newTop = Math.max(0, Math.min(window.innerHeight - modal.offsetHeight, moveEvent.clientY - modalOffsetY));
+        
+        modal.style.left = newLeft + 'px';
+        modal.style.top = newTop + 'px';
+        
+        modalPosition = {
+          top: newTop + 'px',
+          left: newLeft + 'px',
+          transform: 'none'
+        };
+      }
+    };
+    
+    const modalUpHandler = () => {
+      modalIsDragging = false;
+      document.removeEventListener('mousemove', modalMoveHandler);
+      document.removeEventListener('mouseup', modalUpHandler);
+    };
+    
+    document.addEventListener('mousemove', modalMoveHandler);
+    document.addEventListener('mouseup', modalUpHandler);
+  }
+  
+  function toggleModal() {
+    const modal = document.querySelector('#agenwork-modal');
+    const overlay = document.querySelector('#agenwork-overlay');
+    const button = document.querySelector('#agenwork-floating-icon');
+    const iframe = document.querySelector('.agenwork-iframe');
+    
+    if (isModalOpen) {
+      closeModal();
+    } else {
+      modal.style.display = 'block';
+      overlay.style.display = 'block';
+      
+      void modal.offsetWidth;
+      
+      setTimeout(() => {
+        modal.classList.add('active');
+        overlay.classList.add('active');
+        isModalOpen = true;
+        
+        button.classList.add('active');
+        
+        if (iframe && iframe.src) {
+          const currentSrc = iframe.src;
+          iframe.src = '';
+          setTimeout(() => {
+            iframe.src = currentSrc;
+          }, 50);
+        }
+      }, 10);
+    }
+  }
+  
+  function closeModal() {
+    const modal = document.querySelector('#agenwork-modal');
+    const overlay = document.querySelector('#agenwork-overlay');
+    const button = document.querySelector('#agenwork-floating-icon');
+    
+    if (!modal || !overlay) return;
+    
+    modal.classList.remove('active');
+    overlay.classList.remove('active');
+    
+    setTimeout(() => {
+      modal.style.display = 'none';
+      overlay.style.display = 'none';
+      isModalOpen = false;
+      
+      button.classList.remove('active');
+    }, 300);
+  }
+  
+  function addFloatingAnimations() {
+    const animationStyles = document.createElement('style');
+    animationStyles.id = 'agenwork-floating-animations';
+    animationStyles.textContent = '@keyframes agenworkPulse { 0%, 100% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25), 0 0 0 1px rgba(255,255,255,0.1); } 50% { box-shadow: 0 12px 40px rgba(102, 126, 234, 0.35), 0 0 0 2px rgba(255,255,255,0.2); } } .agenwork-floating-button:hover { transform: translateY(-50%) scale(1.1) rotate(5deg) !important; box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4), 0 0 0 2px rgba(255,255,255,0.3) !important; background: linear-gradient(135deg, #5a67d8 0%, #6b4e8c 100%) !important; animation: none !important; } .agenwork-floating-button.active { background: linear-gradient(135deg, #5a67d8 0%, #6b4e8c 100%) !important; animation: none !important; } .agenwork-floating-button.dragging { opacity: 0.8 !important; cursor: move !important; transform: scale(0.95) !important; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2) !important; } .agenwork-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0); z-index: 999998; display: none; transition: background-color 0.3s ease; } .agenwork-overlay.active { background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); } .agenwork-modal { position: fixed; width: 650px; height: 600px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 20px 60px rgba(102, 126, 234, 0.15), 0 0 0 1px rgba(255,255,255,0.2); z-index: 999999; overflow: hidden; display: none; opacity: 0; transform: scale(0.9); transition: opacity 0.3s ease, transform 0.3s ease; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 2px solid rgba(255, 255, 255, 0.3); } .agenwork-modal.active { opacity: 1; transform: scale(1); } .agenwork-modal-header { height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; cursor: move; font-family: "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 500; border-radius: 16px 16px 0 0; } .agenwork-modal-title { font-size: 16px; font-weight: 500; } .agenwork-close-btn { background: rgba(255, 255, 255, 0.2); border: none; border-radius: 50%; width: 32px; height: 32px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: all 0.2s ease; } .agenwork-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.1); } .agenwork-iframe { width: 100%; height: calc(100% - 60px); border: none; background: transparent; } .agenwork-iframe.loaded { background: #ffffff; }';
+    document.head.appendChild(animationStyles);
+  }
+  
+  // Listen for messages from the extension
+  try {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.type === 'TOGGLE_FLOATING_ICON') {
+        const button = document.querySelector('#agenwork-floating-icon');
+        
+        if (button) {
+          if (request.enabled) {
+            button.style.display = 'flex';
+            animateButtonIn(button);
+          } else {
+            button.style.opacity = '0';
+            button.style.transform = (buttonPosition.transform || 'translateY(-50%)') + ' scale(0.8)';
+            
+            setTimeout(() => {
+              button.style.display = 'none';
+            }, 300);
+          }
+          
+          if (!request.enabled && isModalOpen) {
+            closeModal();
+          }
+        } else if (request.enabled) {
+          initButton();
+        }
+        
+        sendResponse({ success: true });
+      }
+    });
+  } catch (error) {
+    console.log('Chrome runtime not available for message listening');
+  }
+  
+  // Add keyboard support - Escape key to close modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isModalOpen) {
+      closeModal();
+    }
+  });
+  
+  // Initialize after DOM loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFloatingButton);
+  } else {
+    initFloatingButton();
+  }
+  
+  // Re-initialize on navigation (for SPAs)
+  let lastUrl = location.href; 
+  new MutationObserver(() => {
+    const url = location.href;
+    if (url !== lastUrl) {
+      lastUrl = url;
+      setTimeout(initFloatingButton, 1000);
+    }
+  }).observe(document, { subtree: true, childList: true });
   
 })();

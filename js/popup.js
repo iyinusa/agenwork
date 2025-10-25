@@ -15,7 +15,49 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize database
   initializeDatabase();
+  
+  // Handle floating mode messaging
+  initializeFloatingMode();
 });
+
+// Initialize floating mode communication
+function initializeFloatingMode() {
+  // Listen for messages from parent window (when in iframe)
+  window.addEventListener('message', (event) => {
+    if (event.data.type === 'FLOATING_MODE') {
+      // Handle floating mode initialization
+      handleFloatingModeInit(event.data.enabled);
+    }
+  });
+  
+  // Send ready signal if in iframe
+  if (window.parent !== window) {
+    window.parent.postMessage({
+      type: 'POPUP_READY',
+      timestamp: Date.now()
+    }, '*');
+  }
+}
+
+// Handle floating mode initialization
+function handleFloatingModeInit(enabled) {
+  if (enabled) {
+    console.log('Popup running in floating mode');
+    
+    // Hide floating toggle button in floating mode to prevent recursion
+    const floatingToggle = document.getElementById('floatingToggle');
+    if (floatingToggle) {
+      floatingToggle.style.display = 'none';
+    }
+    
+    // Add a visual indicator that this is floating mode
+    const header = document.querySelector('.agenwork-header');
+    if (header) {
+      header.style.cursor = 'move';
+      header.title = 'Drag to move the floating popup';
+    }
+  }
+}
 
 // Global variables
 let currentConversationId = null;
@@ -32,11 +74,42 @@ function initializePopup() {
     document.documentElement.setAttribute('data-theme', 'dark');
   }
   
-  // Show welcome message
-  showWelcomeMessage();
+  // Add initialization animation
+  const container = document.querySelector('.agenwork-container');
+  container.style.opacity = '0';
+  container.style.transform = 'scale(0.95) translateY(20px)';
   
-  // Update status
-  updateStatus('Ready', 'success');
+  requestAnimationFrame(() => {
+    container.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    container.style.opacity = '1';
+    container.style.transform = 'scale(1) translateY(0)';
+  });
+  
+  // Show welcome message with delay
+  setTimeout(() => {
+    showWelcomeMessage();
+  }, 200);
+  
+  // Update status with delay
+  setTimeout(() => {
+    updateStatus('Ready', 'success');
+  }, 500);
+  
+  // Update version display
+  updateVersionFromManifest();
+}
+
+// Update version display from manifest
+function updateVersionFromManifest() {
+  try {
+    const manifest = chrome.runtime.getManifest();
+    const versionElement = document.getElementById('versionDisplay');
+    if (versionElement && manifest && manifest.version) {
+      versionElement.textContent = `AgenWork v${manifest.version}`;
+    }
+  } catch (error) {
+    console.error('Error getting manifest version:', error);
+  }
 }
 
 // Initialize event listeners
@@ -89,35 +162,61 @@ function initializeEventListeners() {
 
 // Switch between views
 function switchView(viewName) {
-  // Hide current view
-  document.querySelectorAll('.view').forEach(view => {
-    view.classList.remove('active');
-  });
-  
-  // Show target view
+  const currentActiveView = document.querySelector('.view.active');
   const targetView = document.getElementById(viewName + 'View');
-  if (targetView) {
+  
+  if (!targetView || targetView === currentActiveView) return;
+  
+  // Animate out current view
+  if (currentActiveView) {
+    currentActiveView.style.transform = 'translateX(-100%) scale(0.95)';
+    currentActiveView.style.opacity = '0';
+    currentActiveView.style.filter = 'blur(10px)';
+    
+    setTimeout(() => {
+      currentActiveView.classList.remove('active');
+    }, 200);
+  }
+  
+  // Animate in target view
+  setTimeout(() => {
     targetView.classList.add('active');
     currentView = viewName;
     
+    // Add entrance animation with a slight delay
+    requestAnimationFrame(() => {
+      targetView.style.transform = 'translateX(0) scale(1)';
+      targetView.style.opacity = '1';
+      targetView.style.filter = 'blur(0)';
+    });
+    
     // Load view-specific data
     if (viewName === 'history') {
-      loadConversationHistory();
+      setTimeout(() => loadConversationHistory(), 100);
     }
-  }
+  }, currentActiveView ? 150 : 0);
 }
 
 // Toggle floating icon
 async function toggleFloatingIcon() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    // Get current state
+    const result = await chrome.storage.local.get(['isFloatingIconEnabled']);
+    const currentState = result.isFloatingIconEnabled || false;
+    const newState = !currentState;
+    
     const response = await chrome.runtime.sendMessage({
       type: 'TOGGLE_FLOATING_ICON',
-      enabled: true
+      enabled: newState
     });
     
-    if (response.success) {
-      updateStatus('Floating icon toggled', 'success');
+    if (response && response.success) {
+      updateStatus(`Floating icon ${newState ? 'enabled' : 'disabled'}`, 'success');
+      
+      // Update the settings toggle to reflect current state
+      document.getElementById('floatingIconToggle').checked = newState;
     }
   } catch (error) {
     console.error('Error toggling floating icon:', error);
@@ -286,7 +385,12 @@ function addMessageToChat(message, sender) {
   // Hide welcome message if it exists
   const welcomeMessage = messagesContainer.querySelector('.welcome-message');
   if (welcomeMessage) {
-    welcomeMessage.style.display = 'none';
+    welcomeMessage.style.transition = 'all 0.3s ease';
+    welcomeMessage.style.opacity = '0';
+    welcomeMessage.style.transform = 'translateY(-20px)';
+    setTimeout(() => {
+      welcomeMessage.style.display = 'none';
+    }, 300);
   }
   
   const messageElement = document.createElement('div');
@@ -303,10 +407,17 @@ function addMessageToChat(message, sender) {
   messageElement.appendChild(avatar);
   messageElement.appendChild(bubble);
   
+  // Add subtle delay for staggered animation
+  const delay = messagesContainer.querySelectorAll('.message').length * 50;
+  messageElement.style.animationDelay = `${delay}ms`;
+  
   messagesContainer.appendChild(messageElement);
   
-  // Scroll to bottom
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  // Smooth scroll to bottom
+  messagesContainer.scrollTo({
+    top: messagesContainer.scrollHeight,
+    behavior: 'smooth'
+  });
 }
 
 // Show/hide typing indicator

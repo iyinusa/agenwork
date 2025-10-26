@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AgenWork Database Test</title>
+</head>
+<body>
+    <h1>AgenWork Database Test</h1>
+    <div id="testResults"></div>
+    <button onclick="runTests()">Run Tests</button>
+
+    <script src="js/dexie.min.js"></script>
+    <script src="js/database.js"></script>
+    <script>
+        async function runTests() {
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<p>Running tests...</p>';
+            
+            try {
+                // Initialize database
+                console.log('1. Initializing database...');
+                await agenWorkDB.initialize();
+                results.innerHTML += '<p>✓ Database initialized</p>';
+
+                // Test settings
+                console.log('2. Testing settings...');
+                await agenWorkDB.setSetting('testSetting', 'testValue');
+                const setting = await agenWorkDB.getSetting('testSetting');
+                if (setting === 'testValue') {
+                    results.innerHTML += '<p>✓ Settings work</p>';
+                } else {
+                    results.innerHTML += '<p>✗ Settings failed</p>';
+                }
+
+                // Test conversation creation
+                console.log('3. Testing conversation creation...');
+                const conversation = await agenWorkDB.createConversation('Test Conversation', 'prompter');
+                if (conversation && conversation.id) {
+                    results.innerHTML += '<p>✓ Conversation created</p>';
+                    
+                    // Test message adding
+                    console.log('4. Testing message adding...');
+                    const message = await agenWorkDB.addMessage(conversation.id, 'user', 'Hello test', 'prompter');
+                    if (message && message.id) {
+                        results.innerHTML += '<p>✓ Message added</p>';
+                        
+                        // Test conversation loading
+                        console.log('5. Testing conversation loading...');
+                        const loadedConv = await agenWorkDB.getConversation(conversation.id);
+                        if (loadedConv && loadedConv.messages && loadedConv.messages.length > 0) {
+                            results.innerHTML += '<p>✓ Conversation loaded with messages</p>';
+                        } else {
+                            results.innerHTML += '<p>✗ Conversation loading failed</p>';
+                        }
+                    } else {
+                        results.innerHTML += '<p>✗ Message adding failed</p>';
+                    }
+                } else {
+                    results.innerHTML += '<p>✗ Conversation creation failed</p>';
+                }
+
+                // Test stats
+                console.log('6. Testing database stats...');
+                const stats = await agenWorkDB.getDatabaseStats();
+                if (stats && stats.conversations > 0) {
+                    results.innerHTML += '<p>✓ Database stats work</p>';
+                    results.innerHTML += `<p>Stats: ${stats.conversations} conversations, ${stats.messages} messages</p>`;
+                } else {
+                    results.innerHTML += '<p>✗ Database stats failed</p>';
+                }
+
+                results.innerHTML += '<p><strong>All tests completed!</strong></p>';
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                results.innerHTML += `<p style="color: red;">✗ Test failed: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

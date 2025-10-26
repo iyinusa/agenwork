@@ -10,11 +10,16 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize event listeners
   initializeEventListeners();
   
-  // Load settings
-  loadSettings();
-  
-  // Initialize database
-  initializeDatabase();
+  // Initialize database first, then load settings
+  initializeDatabase().then(() => {
+    console.log('Database initialization completed successfully');
+    // Load settings after database is ready
+    loadSettings();
+  }).catch(error => {
+    console.error('Database initialization failed:', error.message || error.toString() || error);
+    // Fall back to loading settings without database
+    loadSettings();
+  });
   
   // Handle floating mode messaging
   initializeFloatingMode();
@@ -152,12 +157,18 @@ function initializeEventListeners() {
   // Settings
   document.getElementById('themeSelect').addEventListener('change', handleThemeChange);
   document.getElementById('clearDataBtn').addEventListener('click', clearAllData);
+  document.getElementById('exportDataBtn').addEventListener('click', exportData);
+  document.getElementById('importDataBtn').addEventListener('click', () => {
+    document.getElementById('importFileInput').click();
+  });
+  document.getElementById('importFileInput').addEventListener('change', importData);
+  document.getElementById('refreshStatsBtn').addEventListener('click', updateDatabaseStats);
   
   // AI Agent toggles
-  document.getElementById('summarizerToggle').addEventListener('change', saveSettings);
-  document.getElementById('translatorToggle').addEventListener('change', saveSettings);
-  document.getElementById('writerToggle').addEventListener('change', saveSettings);
-  document.getElementById('prompterToggle').addEventListener('change', saveSettings);
+  document.getElementById('summarizerToggle').addEventListener('change', () => saveSettings());
+  document.getElementById('translatorToggle').addEventListener('change', () => saveSettings());
+  document.getElementById('writerToggle').addEventListener('change', () => saveSettings());
+  document.getElementById('prompterToggle').addEventListener('change', () => saveSettings());
 }
 
 // Switch between views
@@ -193,6 +204,17 @@ function switchView(viewName) {
     // Load view-specific data
     if (viewName === 'history') {
       setTimeout(() => loadConversationHistory(), 100);
+    } else if (viewName === 'settings') {
+      // Wait for database to be initialized before updating stats
+      setTimeout(async () => {
+        // Wait for database initialization if it's still initializing
+        let attempts = 0;
+        while (!agenWorkDB.isInitialized && attempts < 50) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+        updateDatabaseStats();
+      }, 100);
     }
   }, currentActiveView ? 150 : 0);
 }
@@ -252,7 +274,9 @@ async function sendMessage() {
   
   try {
     // Process message with AI
-    const response = await processMessage(message);
+    const result = await processMessage(message);
+    const response = result.response || result;
+    const agentType = result.agentType || 'prompter';
     
     // Hide typing indicator
     hideTypingIndicator();
@@ -261,7 +285,7 @@ async function sendMessage() {
     addMessageToChat(response, 'agent');
     
     // Save conversation
-    saveConversation(message, response);
+    await saveConversation(message, response, agentType);
     
   } catch (error) {
     console.error('Error processing message:', error);
@@ -299,7 +323,10 @@ async function processMessage(message) {
   }
   
   updateStatus('Ready', 'success');
-  return response;
+  return {
+    response: response,
+    agentType: intent.primary === 'general' ? 'prompter' : intent.primary + 'r'
+  };
 }
 
 // Detect user intent
@@ -465,54 +492,124 @@ function updateStatus(message, type = 'info') {
 }
 
 // Load and save settings
-function loadSettings() {
-  chrome.storage.local.get([
-    'isFloatingIconEnabled',
-    'theme',
-    'aiSettings'
-  ], (result) => {
-    // Update floating icon toggle
-    if (result.isFloatingIconEnabled !== undefined) {
-      document.getElementById('floatingIconToggle').checked = result.isFloatingIconEnabled;
+async function loadSettings() {
+  try {
+    // Check if database is initialized
+    if (!agenWorkDB.isInitialized) {
+      // Fall back to chrome storage temporarily
+      chrome.storage.local.get([
+        'isFloatingIconEnabled',
+        'theme',
+        'aiSettings'
+      ], (result) => {
+        updateUIWithSettings(result);
+      });
+      return;
     }
     
-    // Update theme
-    if (result.theme) {
-      document.getElementById('themeSelect').value = result.theme;
-      if (result.theme !== 'auto') {
-        document.documentElement.setAttribute('data-theme', result.theme);
+    // Load settings from database
+    const settings = await agenWorkDB.getAllSettings();
+    
+    // Convert database settings format to UI format
+    const uiSettings = {
+      isFloatingIconEnabled: settings.floatingEnabled ?? false,
+      theme: settings.theme ?? 'auto',
+      aiSettings: {
+        summarizer: settings.summarizerEnabled ?? true,
+        translator: settings.translatorEnabled ?? true,
+        writer: settings.writerEnabled ?? true,
+        prompter: settings.prompterEnabled ?? true
       }
-    }
+    };
     
-    // Update AI settings
-    if (result.aiSettings) {
-      document.getElementById('summarizerToggle').checked = result.aiSettings.summarizer ?? true;
-      document.getElementById('translatorToggle').checked = result.aiSettings.translator ?? true;
-      document.getElementById('writerToggle').checked = result.aiSettings.writer ?? true;
-      document.getElementById('prompterToggle').checked = result.aiSettings.prompter ?? true;
-    }
-  });
+    updateUIWithSettings(uiSettings);
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+    // Fall back to default settings
+    updateUIWithSettings({});
+  }
 }
 
-function saveSettings() {
-  const settings = {
-    isFloatingIconEnabled: document.getElementById('floatingIconToggle').checked,
-    theme: document.getElementById('themeSelect').value,
-    aiSettings: {
-      summarizer: document.getElementById('summarizerToggle').checked,
-      translator: document.getElementById('translatorToggle').checked,
-      writer: document.getElementById('writerToggle').checked,
-      prompter: document.getElementById('prompterToggle').checked
-    }
-  };
+function updateUIWithSettings(settings) {
+  // Update floating icon toggle
+  const floatingToggle = document.getElementById('floatingIconToggle');
+  if (floatingToggle && settings.isFloatingIconEnabled !== undefined) {
+    floatingToggle.checked = settings.isFloatingIconEnabled;
+  }
   
-  chrome.storage.local.set(settings, () => {
+  // Update theme
+  const themeSelect = document.getElementById('themeSelect');
+  if (themeSelect && settings.theme) {
+    themeSelect.value = settings.theme;
+    if (settings.theme !== 'auto') {
+      document.documentElement.setAttribute('data-theme', settings.theme);
+    }
+  }
+  
+  // Update AI settings
+  if (settings.aiSettings) {
+    const summarizerToggle = document.getElementById('summarizerToggle');
+    const translatorToggle = document.getElementById('translatorToggle');
+    const writerToggle = document.getElementById('writerToggle');
+    const prompterToggle = document.getElementById('prompterToggle');
+    
+    if (summarizerToggle) summarizerToggle.checked = settings.aiSettings.summarizer ?? true;
+    if (translatorToggle) translatorToggle.checked = settings.aiSettings.translator ?? true;
+    if (writerToggle) writerToggle.checked = settings.aiSettings.writer ?? true;
+    if (prompterToggle) prompterToggle.checked = settings.aiSettings.prompter ?? true;
+  }
+}
+
+async function saveSettings() {
+  try {
+    // Get current settings from UI
+    const floatingToggle = document.getElementById('floatingIconToggle');
+    const themeSelect = document.getElementById('themeSelect');
+    const summarizerToggle = document.getElementById('summarizerToggle');
+    const translatorToggle = document.getElementById('translatorToggle');
+    const writerToggle = document.getElementById('writerToggle');
+    const prompterToggle = document.getElementById('prompterToggle');
+    
+    // Save individual settings to database
+    const settingsToSave = [
+      { key: 'floatingEnabled', value: floatingToggle ? floatingToggle.checked : false },
+      { key: 'theme', value: themeSelect ? themeSelect.value : 'auto' },
+      { key: 'summarizerEnabled', value: summarizerToggle ? summarizerToggle.checked : true },
+      { key: 'translatorEnabled', value: translatorToggle ? translatorToggle.checked : true },
+      { key: 'writerEnabled', value: writerToggle ? writerToggle.checked : true },
+      { key: 'prompterEnabled', value: prompterToggle ? prompterToggle.checked : true }
+    ];
+    
+    // Save each setting
+    for (const setting of settingsToSave) {
+      await agenWorkDB.setSetting(setting.key, setting.value);
+    }
+    
+    // Also save to Chrome storage for compatibility
+    const chromeSettings = {
+      isFloatingIconEnabled: floatingToggle ? floatingToggle.checked : false,
+      theme: themeSelect ? themeSelect.value : 'auto',
+      aiSettings: {
+        summarizer: summarizerToggle ? summarizerToggle.checked : true,
+        translator: translatorToggle ? translatorToggle.checked : true,
+        writer: writerToggle ? writerToggle.checked : true,
+        prompter: prompterToggle ? prompterToggle.checked : true
+      }
+    };
+    
+    chrome.storage.local.set(chromeSettings);
+    
     updateStatus('Settings saved', 'success');
-  });
+    showNotification('Settings saved successfully', 'success');
+  } catch (error) {
+    console.error('Failed to save settings:', error);
+    updateStatus('Failed to save settings', 'error');
+    showNotification('Failed to save settings', 'error');
+  }
 }
 
 // Handle theme change
-function handleThemeChange(e) {
+async function handleThemeChange(e) {
   const theme = e.target.value;
   
   if (theme === 'auto') {
@@ -522,44 +619,536 @@ function handleThemeChange(e) {
     document.documentElement.setAttribute('data-theme', theme);
   }
   
-  saveSettings();
+  // Save theme setting to database
+  await saveSettingToDB('theme', theme);
+  
+  // Also save all settings
+  await saveSettings();
 }
 
-// Clear all data
-function clearAllData() {
-  if (confirm('Are you sure you want to clear all conversations and settings? This action cannot be undone.')) {
-    chrome.storage.local.clear(() => {
-      if (db) {
-        db.conversations.clear();
-      }
-      updateStatus('All data cleared', 'success');
-      
-      // Reset UI
-      document.getElementById('messagesContainer').innerHTML = '<div class="welcome-message">...</div>';
-      showWelcomeMessage();
-      loadSettings();
-    });
+// Apply theme to document
+function applyTheme(theme) {
+  if (!theme) theme = 'light'; // Default to light theme
+  
+  if (theme === 'auto') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+  } else {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  
+  // Update theme selector if it exists
+  const themeSelect = document.getElementById('themeSelect');
+  if (themeSelect) {
+    themeSelect.value = theme;
   }
 }
 
-// Database operations (using DexieJS when implemented)
-function initializeDatabase() {
-  // This will be implemented with DexieJS in backlog 3
-  console.log('Database initialization placeholder');
+// Clear all data
+async function clearAllData() {
+  if (confirm('Are you sure you want to clear all conversations and settings? This action cannot be undone.')) {
+    try {
+      // Clear database tables
+      if (agenWorkDB.isInitialized) {
+        await agenWorkDB.db.conversations.clear();
+        await agenWorkDB.db.messages.clear();
+        await agenWorkDB.db.settings.clear();
+        
+        // Reinitialize default settings
+        await agenWorkDB.initializeDefaultSettings();
+      }
+      
+      // Clear Chrome storage as well
+      chrome.storage.local.clear();
+      
+      // Reset global variables
+      currentConversationId = null;
+      
+      updateStatus('All data cleared', 'success');
+      showNotification('All data cleared successfully', 'success');
+      
+      // Reset UI
+      document.getElementById('messagesContainer').innerHTML = '';
+      showWelcomeMessage();
+      startNewConversation();
+      
+      // Reload settings and conversation history
+      await loadSettings();
+      await loadConversationHistory();
+      
+    } catch (error) {
+      console.error('Failed to clear all data:', error);
+      updateStatus('Failed to clear data', 'error');
+      showNotification('Failed to clear all data', 'error');
+    }
+  }
 }
 
-function saveConversation(userMessage, aiResponse) {
-  // This will be implemented with DexieJS in backlog 3
-  console.log('Save conversation placeholder:', { userMessage, aiResponse });
+// Database operations using DexieJS
+async function initializeDatabase() {
+  try {
+    await agenWorkDB.initialize();
+    db = agenWorkDB.db;
+    console.log('Database initialized successfully');
+    
+    // Load settings after database is ready
+    await loadSettingsFromDB();
+    
+    // Load conversation history
+    await loadConversationHistory();
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize database:', error.message || error.toString() || error);
+    updateStatus('Database Error: ' + (error.message || 'Unknown error'), 'error');
+    return false;
+  }
 }
 
-function loadConversationHistory() {
-  // This will be implemented with DexieJS in backlog 3
-  const conversationsList = document.getElementById('conversationsList');
-  conversationsList.innerHTML = `
-    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-      <i class="far fa-comments" style="font-size: 48px; margin-bottom: 16px;"></i>
-      <p>Conversation history will be available once DexieJS is integrated.</p>
+async function saveConversation(userMessage, aiResponse, agentType = 'prompter') {
+  try {
+    // Create a new conversation if none exists
+    if (!currentConversationId) {
+      const title = generateConversationTitle(userMessage);
+      const conversation = await agenWorkDB.createConversation(title, agentType);
+      currentConversationId = conversation.id;
+      
+      // Update UI to show active conversation
+      updateActiveConversationTitle(title);
+    }
+    
+    // Add user message
+    await agenWorkDB.addMessage(currentConversationId, 'user', userMessage, agentType);
+    
+    // Add AI response
+    await agenWorkDB.addMessage(currentConversationId, 'assistant', aiResponse, agentType, {
+      timestamp: new Date().toISOString()
+    });
+    
+    // Refresh conversation history in the background
+    setTimeout(() => {
+      loadConversationHistory();
+    }, 100);
+    
+    console.log('Conversation saved successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to save conversation:', error);
+    return false;
+  }
+}
+
+async function loadConversationHistory() {
+  try {
+    const conversationsList = document.getElementById('conversationsList');
+    if (!conversationsList) return;
+    
+    const conversations = await agenWorkDB.getAllConversations();
+    
+    if (conversations.length === 0) {
+      conversationsList.innerHTML = `
+        <div class="empty-state">
+          <i class="far fa-comments" style="font-size: 48px; margin-bottom: 16px;"></i>
+          <p>No conversations yet</p>
+          <p class="text-secondary">Start a chat to create your first conversation</p>
+        </div>
+      `;
+      return;
+    }
+    
+    conversationsList.innerHTML = '';
+    
+    conversations.forEach(conversation => {
+      const conversationItem = createConversationItem(conversation);
+      conversationsList.appendChild(conversationItem);
+    });
+    
+  } catch (error) {
+    console.error('Failed to load conversation history:', error);
+    const conversationsList = document.getElementById('conversationsList');
+    if (conversationsList) {
+      conversationsList.innerHTML = `
+        <div class="error-state">
+          <i class="fas fa-exclamation-triangle" style="color: var(--error-color); font-size: 24px; margin-bottom: 8px;"></i>
+          <p>Failed to load conversations</p>
+        </div>
+      `;
+    }
+  }
+}
+
+// Helper functions for database operations
+function generateConversationTitle(userMessage) {
+  // Generate a meaningful title from the first user message
+  const title = userMessage.length > 50 ? 
+    userMessage.substring(0, 47) + '...' : 
+    userMessage;
+  return title || `Conversation ${new Date().toLocaleString()}`;
+}
+
+function updateActiveConversationTitle(title) {
+  // Update UI to show the active conversation title
+  const headerTitle = document.querySelector('.header-title');
+  if (headerTitle) {
+    headerTitle.textContent = title;
+  }
+}
+
+function createConversationItem(conversation) {
+  const item = document.createElement('div');
+  item.className = 'conversation-item';
+  item.setAttribute('data-conversation-id', conversation.id);
+  
+  // Determine agent icon
+  const agentIcons = {
+    'prompter': 'fas fa-comments',
+    'summarizer': 'fas fa-file-alt',
+    'translator': 'fas fa-language',
+    'writer': 'fas fa-pen'
+  };
+  
+  const agentIcon = agentIcons[conversation.agentType] || 'fas fa-comments';
+  
+  item.innerHTML = `
+    <div class="conversation-header">
+      <div class="conversation-icon">
+        <i class="${agentIcon}"></i>
+      </div>
+      <div class="conversation-info">
+        <div class="conversation-title">${conversation.title}</div>
+        <div class="conversation-meta">
+          <span class="conversation-date">${formatDate(conversation.updatedAt)}</span>
+          <span class="conversation-count">${conversation.messageCount || 0} messages</span>
+        </div>
+      </div>
+      <div class="conversation-actions">
+        <button class="conversation-action-btn" onclick="loadConversation(${conversation.id})" title="Load conversation">
+          <i class="fas fa-folder-open"></i>
+        </button>
+        <button class="conversation-action-btn" onclick="deleteConversation(${conversation.id})" title="Delete conversation">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
     </div>
   `;
+  
+  // Add click handler to load conversation
+  item.addEventListener('click', (e) => {
+    if (!e.target.closest('.conversation-actions')) {
+      loadConversation(conversation.id);
+    }
+  });
+  
+  return item;
+}
+
+function formatDate(date) {
+  const now = new Date();
+  const conversationDate = new Date(date);
+  const diffMs = now - conversationDate;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return conversationDate.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  } else if (diffDays === 1) {
+    return 'Yesterday';
+  } else if (diffDays < 7) {
+    return `${diffDays} days ago`;
+  } else {
+    return conversationDate.toLocaleDateString();
+  }
+}
+
+async function loadConversation(conversationId) {
+  try {
+    const conversation = await agenWorkDB.getConversation(conversationId);
+    if (!conversation) {
+      console.error('Conversation not found');
+      return;
+    }
+    
+    currentConversationId = conversationId;
+    
+    // Clear current messages
+    const messagesContainer = document.getElementById('messagesContainer');
+    messagesContainer.innerHTML = '';
+    
+    // Load messages
+    conversation.messages.forEach(message => {
+      const sender = message.role === 'user' ? 'user' : 'agent';
+      addMessageToChat(message.content, sender, message.agentType);
+    });
+    
+    // Switch to chat view
+    switchView('chat');
+    
+    // Update header title
+    updateActiveConversationTitle(conversation.title);
+    
+    console.log('Conversation loaded successfully');
+  } catch (error) {
+    console.error('Failed to load conversation:', error);
+  }
+}
+
+async function deleteConversation(conversationId) {
+  if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const success = await agenWorkDB.deleteConversation(conversationId);
+    if (success) {
+      // Refresh conversation history
+      await loadConversationHistory();
+      
+      // If this was the active conversation, reset it
+      if (currentConversationId === conversationId) {
+        currentConversationId = null;
+        startNewConversation();
+      }
+      
+      showNotification('Conversation deleted successfully', 'success');
+    } else {
+      showNotification('Failed to delete conversation', 'error');
+    }
+  } catch (error) {
+    console.error('Failed to delete conversation:', error);
+    showNotification('Failed to delete conversation', 'error');
+  }
+}
+
+function startNewConversation() {
+  currentConversationId = null;
+  const messagesContainer = document.getElementById('messagesContainer');
+  messagesContainer.innerHTML = '';
+  showWelcomeMessage();
+  updateActiveConversationTitle('New Conversation');
+}
+
+// Settings functions with database integration
+async function loadSettingsFromDB() {
+  try {
+    const settings = await agenWorkDB.getAllSettings();
+    
+    // Apply theme setting
+    if (settings.theme) {
+      applyTheme(settings.theme);
+    }
+    
+    // Apply floating mode setting
+    if (settings.floatingEnabled) {
+      updateFloatingToggle(settings.floatingEnabled);
+    }
+    
+    // Apply other settings
+    Object.keys(settings).forEach(key => {
+      const element = document.getElementById(key + 'Setting');
+      if (element) {
+        if (element.type === 'checkbox') {
+          element.checked = settings[key];
+        } else {
+          element.value = settings[key];
+        }
+      }
+    });
+    
+    return settings;
+  } catch (error) {
+    console.error('Failed to load settings from database:', error);
+    return {};
+  }
+}
+
+async function saveSettingToDB(key, value) {
+  try {
+    const success = await agenWorkDB.setSetting(key, value);
+    if (success) {
+      console.log(`Setting ${key} saved:`, value);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error(`Failed to save setting ${key}:`, error);
+    return false;
+  }
+}
+
+// Data export and import functions
+async function exportData() {
+  try {
+    updateStatus('Exporting data...', 'processing');
+    
+    const data = await agenWorkDB.exportData();
+    
+    // Create downloadable file
+    const blob = new Blob([JSON.stringify(data, null, 2)], { 
+      type: 'application/json' 
+    });
+    const url = URL.createObjectURL(blob);
+    
+    // Create download link
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `agenwork-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    URL.revokeObjectURL(url);
+    
+    updateStatus('Data exported successfully', 'success');
+    showNotification('Data exported successfully', 'success');
+  } catch (error) {
+    console.error('Failed to export data:', error);
+    updateStatus('Export failed', 'error');
+    showNotification('Failed to export data', 'error');
+  }
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  try {
+    updateStatus('Importing data...', 'processing');
+    
+    const fileContent = await file.text();
+    const data = JSON.parse(fileContent);
+    
+    // Validate data structure
+    if (!data.conversations && !data.settings) {
+      throw new Error('Invalid backup file format');
+    }
+    
+    // Confirm import
+    const confirmMessage = `This will replace all current data with the backup from ${data.exportDate}. Continue?`;
+    if (!confirm(confirmMessage)) {
+      updateStatus('Import cancelled', 'info');
+      return;
+    }
+    
+    // Import data
+    await agenWorkDB.importData(data);
+    
+    // Reset current conversation
+    currentConversationId = null;
+    
+    // Refresh UI
+    await loadSettings();
+    await loadConversationHistory();
+    startNewConversation();
+    
+    updateStatus('Data imported successfully', 'success');
+    showNotification('Data imported successfully', 'success');
+  } catch (error) {
+    console.error('Failed to import data:', error);
+    updateStatus('Import failed', 'error');
+    showNotification('Failed to import data: ' + error.message, 'error');
+  } finally {
+    // Clear the file input
+    event.target.value = '';
+  }
+}
+
+// Database statistics
+async function updateDatabaseStats() {
+  try {
+    const statsContainer = document.getElementById('databaseStats');
+    if (!statsContainer) {
+      console.warn('Database stats container not found');
+      return;
+    }
+    
+    statsContainer.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+    
+    // Check if database is available
+    if (!agenWorkDB || !agenWorkDB.isInitialized) {
+      statsContainer.innerHTML = '<p class="error-text">Database not initialized</p>';
+      return;
+    }
+    
+    const stats = await agenWorkDB.getDatabaseStats();
+    
+    if (stats && !stats.error) {
+      statsContainer.innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Conversations:</span>
+            <span class="stat-value">${stats.conversations}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Messages:</span>
+            <span class="stat-value">${stats.messages}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Archived:</span>
+            <span class="stat-value">${stats.archivedConversations}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Settings:</span>
+            <span class="stat-value">${stats.settings}</span>
+          </div>
+        </div>
+      `;
+    } else if (stats && stats.error) {
+      // Show partial stats even if there was an error
+      statsContainer.innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Conversations:</span>
+            <span class="stat-value">${stats.conversations}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Messages:</span>
+            <span class="stat-value">${stats.messages}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Archived:</span>
+            <span class="stat-value">${stats.archivedConversations}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Settings:</span>
+            <span class="stat-value">${stats.settings}</span>
+          </div>
+        </div>
+        <p class="warning-text" style="margin-top: 8px; font-size: 12px; color: #f39c12;">⚠ Some data may be incomplete</p>
+      `;
+    } else {
+      statsContainer.innerHTML = '<p class="error-text">Failed to load statistics</p>';
+    }
+  } catch (error) {
+    console.error('Failed to update database stats:', error.message || error.toString() || error);
+    const statsContainer = document.getElementById('databaseStats');
+    if (statsContainer) {
+      statsContainer.innerHTML = `<p class="error-text">Error: ${error.message || 'Unknown error'}</p>`;
+    }
+  }
+}
+
+// Notification function
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.innerHTML = `
+    <div class="notification-content">
+      <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  // Add to page
+  document.body.appendChild(notification);
+  
+  // Remove after delay
+  setTimeout(() => {
+    notification.classList.add('fade-out');
+    setTimeout(() => {
+      document.body.removeChild(notification);
+    }, 300);
+  }, 3000);
 }

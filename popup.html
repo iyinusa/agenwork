@@ -174,13 +174,39 @@
 
                     <!-- Privacy Settings -->
                     <div class="settings-section">
-                        <h3>Privacy</h3>
+                        <h3>Privacy & Data</h3>
                         <div class="setting-item">
                             <div class="setting-info">
                                 <label>Data Storage</label>
                                 <p>All conversations are stored locally on your device</p>
                             </div>
                             <button id="clearDataBtn" class="danger-btn">Clear All Data</button>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Export Data</label>
+                                <p>Download all your conversations and settings</p>
+                            </div>
+                            <button id="exportDataBtn" class="secondary-btn">Export</button>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Import Data</label>
+                                <p>Restore conversations and settings from backup</p>
+                            </div>
+                            <div class="import-controls">
+                                <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                                <button id="importDataBtn" class="secondary-btn">Import</button>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Database Statistics</label>
+                                <div id="databaseStats" class="stats-info">
+                                    <p>Loading...</p>
+                                </div>
+                            </div>
+                            <button id="refreshStatsBtn" class="secondary-btn">Refresh</button>
                         </div>
                     </div>
 
@@ -212,6 +238,7 @@
 
     <!-- Scripts -->
     <script src="js/dexie.min.js"></script>
+    <script src="js/database.js"></script>
     <script src="js/popup.js"></script>
 </body>
 </html>

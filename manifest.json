@@ -45,6 +45,7 @@
         "popup.html",
         "js/popup.js",
         "js/dexie.min.js",
+        "js/database.js",
         "css/fontawesome.css",
         "webfonts/*"
       ],

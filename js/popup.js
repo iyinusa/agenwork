@@ -207,27 +207,13 @@ function updateAIStatus(capabilities) {
 
 // Show AI unavailable message
 function showAIUnavailableMessage() {
-  const messagesContainer = document.getElementById('messagesContainer');
-  const aiMessage = document.createElement('div');
-  aiMessage.className = 'message agent ai-warning';
-  aiMessage.innerHTML = `
-    <div class="message-avatar">⚠️</div>
-    <div class="message-bubble">
-      <strong>Chrome AI APIs not available</strong><br>
-      The Chrome built-in AI APIs are not available in this browser or version. 
-      Please ensure you're using Chrome 127+ with AI features enabled.
-      <br><br>
-      Some functionality may be limited to basic responses.
-    </div>
-  `;
-  
-  // Insert after welcome message
-  const welcomeMsg = messagesContainer.querySelector('.welcome-message');
-  if (welcomeMsg && welcomeMsg.nextSibling) {
-    messagesContainer.insertBefore(aiMessage, welcomeMsg.nextSibling);
-  } else {
-    messagesContainer.appendChild(aiMessage);
-  }
+  const markdownMessage = `⚠️ **Chrome AI APIs not available**
+
+The Chrome built-in AI APIs are not available in this browser or version. Please ensure you're using **Chrome 127+** with AI features enabled.
+
+Some functionality may be limited to basic responses.`;
+
+  addMessageToChat(markdownMessage, 'agent');
 }
 
 // Handle AI progress updates
@@ -451,11 +437,13 @@ async function sendMessage() {
     // Hide typing indicator
     hideTypingIndicator();
     
-    // Add AI response to chat
-    addMessageToChat(response, 'agent');
-    
-    // Save conversation
-    await saveConversation(message, response, agentType);
+    // Add AI response to chat (only if there's a response)
+    if (response) {
+      addMessageToChat(response, 'agent');
+      
+      // Save conversation
+      await saveConversation(message, response, agentType);
+    }
     
   } catch (error) {
     console.error('Error processing message:', error);
@@ -468,6 +456,16 @@ async function sendMessage() {
 // Process message with appropriate AI agent
 async function processMessage(message) {
   updateStatus('Processing message...', 'processing');
+  
+  // Check for special demo commands
+  if (message.toLowerCase().includes('markdown demo') || message.toLowerCase().includes('show demo')) {
+    updateStatus('Ready', 'success');
+    showMarkdownDemo();
+    return {
+      response: null, // Already added to chat
+      agentType: 'prompter'
+    };
+  }
   
   // Detect intent using the prompter agent
   const intent = await detectIntent(message);
@@ -723,19 +721,58 @@ function extractTextFromMessage(message) {
 }
 
 async function handleTranslateRequest(message, intent) {
-  return "I can help with translation! The Translator AI agent will be implemented using Chrome's built-in Translator API. What would you like me to translate?";
+  return `## 🌐 Translation Assistant
+
+I can help with translation! The **Translator AI agent** will be implemented using Chrome's built-in Translator API.
+
+**What would you like me to translate?**
+
+*Coming soon: Real-time translation powered by Chrome's built-in AI.*`;
 }
 
 async function handleWriteRequest(message, intent) {
-  return "I'm here to help with your writing! The Writer AI agent will use Chrome's built-in Writer API to assist with composing, editing, and improving text. What would you like help writing?";
+  return `## ✍️ Writing Assistant
+
+I'm here to help with your writing! The **Writer AI agent** uses Chrome's built-in Writer API to assist with:
+
+- **Composing** new content
+- **Editing** existing text  
+- **Improving** writing style and clarity
+
+**What would you like help writing?**
+
+*Powered by Chrome's advanced AI writing capabilities.*`;
 }
 
 async function handleResearchRequest(message, intent) {
-  return "I can help you research topics! I'll use Chrome's built-in AI to analyze web content and provide insights. What would you like to research?";
+  return `## 🔍 Research Assistant
+
+I can help you research topics! I'll use Chrome's built-in AI to:
+
+- **Analyze** web content and data
+- **Provide** insights and summaries
+- **Extract** key information
+
+**What would you like to research?**
+
+*Intelligent research powered by Chrome's AI.*`;
 }
 
 async function handleGeneralRequest(message) {
-  return "Thanks for your message! I'm AgenWork, your smart browsing assistant. I can help with summarizing content, translating text, writing assistance, and research. How can I help you today?";
+  return `## 👋 Welcome to AgenWork!
+
+Thanks for your message! I'm **AgenWork**, your smart browsing assistant powered by Chrome's built-in AI.
+
+### 🚀 How I can help:
+
+- **📄 Summarizing** content from web pages
+- **🌐 Translating** text between languages  
+- **✍️ Writing** assistance and editing
+- **🔍 Research** and information gathering
+
+**How can I help you today?**
+
+*Just ask me anything or use the quick action buttons above!*`;
 }
 
 // Handle quick actions
@@ -767,7 +804,7 @@ function handleQuickAction(action) {
 }
 
 // Add message to chat
-function addMessageToChat(message, sender) {
+function addMessageToChat(message, sender, agentType = 'prompter') {
   const messagesContainer = document.getElementById('messagesContainer');
   
   // Hide welcome message if it exists
@@ -790,8 +827,25 @@ function addMessageToChat(message, sender) {
   
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
-  bubble.textContent = message;
   
+  // Create markdown content container
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'markdown-content';
+  
+  // Render markdown for agent messages, keep plain text for user messages
+  if (sender === 'agent' && window.MarkdownRenderer) {
+    try {
+      const renderedHtml = MarkdownRenderer.render(message);
+      contentDiv.innerHTML = renderedHtml;
+    } catch (error) {
+      console.warn('Markdown rendering failed, using plain text:', error);
+      contentDiv.textContent = message;
+    }
+  } else {
+    contentDiv.textContent = message;
+  }
+  
+  bubble.appendChild(contentDiv);
   messageElement.appendChild(avatar);
   messageElement.appendChild(bubble);
   
@@ -824,6 +878,56 @@ function showWelcomeMessage() {
   if (welcomeMessage) {
     welcomeMessage.style.display = 'block';
   }
+}
+
+// Show markdown demo (for testing and demonstration purposes)
+function showMarkdownDemo() {
+  const demoContent = `# 🎉 Markdown Rendering Demo
+
+Welcome to **AgenWork's** new and improved chat interface! All AI responses now support *beautiful* markdown formatting.
+
+## ✨ Features
+
+### Text Formatting
+- **Bold text** for emphasis
+- *Italic text* for style  
+- ~~Strikethrough~~ for corrections
+- \`inline code\` for technical terms
+
+### Code Blocks
+Here's a sample JavaScript function:
+
+\`\`\`javascript
+function greetUser(name) {
+  console.log(\`Hello, \${name}! Welcome to AgenWork.\`);
+  return \`👋 Welcome \${name}!\`;
+}
+\`\`\`
+
+### Lists and Organization
+1. **Numbered lists** for sequences
+2. **Bullet points** for features
+   - Sub-items work too
+   - With proper indentation
+
+### Quotes and Links
+> "The best AI assistant is one that presents information clearly and beautifully."
+> — *AgenWork Team*
+
+Visit our [documentation](https://example.com) for more details.
+
+### Tables
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Markdown | ✅ Active | Fully implemented |
+| Themes | ✅ Active | Light & Dark modes |
+| AI Agents | 🚧 Beta | Chrome AI integration |
+
+---
+
+**Try it yourself!** Ask me anything and see how responses are now beautifully formatted with professional markdown styling. 🚀`;
+
+  addMessageToChat(demoContent, 'agent');
 }
 
 // Update status
@@ -1160,42 +1264,47 @@ function createConversationItem(conversation) {
   item.className = 'conversation-item';
   item.setAttribute('data-conversation-id', conversation.id);
   
-  // Determine agent icon
-  const agentIcons = {
-    'prompter': 'fas fa-comments',
-    'summarizer': 'fas fa-file-alt',
-    'translator': 'fas fa-language',
-    'writer': 'fas fa-pen'
-  };
-  
-  const agentIcon = agentIcons[conversation.agentType] || 'fas fa-comments';
-  
   item.innerHTML = `
     <div class="conversation-header">
-      <div class="conversation-icon">
-        <i class="${agentIcon}"></i>
-      </div>
       <div class="conversation-info">
-        <div class="conversation-title">${conversation.title}</div>
+        <div class="conversation-title-container">
+          <div class="conversation-title" data-conversation-id="${conversation.id}">${conversation.title}</div>
+          <input type="text" class="conversation-title-edit" value="${conversation.title}" style="display: none;">
+        </div>
         <div class="conversation-meta">
           <span class="conversation-date">${formatDate(conversation.updatedAt)}</span>
           <span class="conversation-count">${conversation.messageCount || 0} messages</span>
         </div>
       </div>
       <div class="conversation-actions">
-        <button class="conversation-action-btn" onclick="loadConversation(${conversation.id})" title="Load conversation">
-          <i class="fas fa-folder-open"></i>
+        <button class="conversation-action-btn edit-title-btn" title="Edit title">
+          <i class="fas fa-edit"></i>
         </button>
-        <button class="conversation-action-btn" onclick="deleteConversation(${conversation.id})" title="Delete conversation">
+        <button class="conversation-action-btn delete-btn" title="Delete conversation">
           <i class="fas fa-trash"></i>
         </button>
       </div>
     </div>
   `;
   
+  // Add event listeners for action buttons
+  const editBtn = item.querySelector('.edit-title-btn');
+  const deleteBtn = item.querySelector('.delete-btn');
+  
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    editConversationTitle(conversation.id);
+  });
+  
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteConversation(conversation.id);
+  });
+  
   // Add click handler to load conversation
   item.addEventListener('click', (e) => {
-    if (!e.target.closest('.conversation-actions')) {
+    // Don't load conversation if clicking on actions or title edit
+    if (!e.target.closest('.conversation-actions') && !e.target.closest('.conversation-title-edit')) {
       loadConversation(conversation.id);
     }
   });
@@ -1225,9 +1334,17 @@ function formatDate(date) {
 
 async function loadConversation(conversationId) {
   try {
+    // Validate conversationId
+    if (!conversationId) {
+      console.error('Invalid conversation ID');
+      showNotification('Invalid conversation ID', 'error');
+      return;
+    }
+    
     const conversation = await agenWorkDB.getConversation(conversationId);
     if (!conversation) {
       console.error('Conversation not found');
+      showNotification('Conversation not found', 'error');
       return;
     }
     
@@ -1235,13 +1352,21 @@ async function loadConversation(conversationId) {
     
     // Clear current messages
     const messagesContainer = document.getElementById('messagesContainer');
+    if (!messagesContainer) {
+      console.error('Messages container not found');
+      return;
+    }
     messagesContainer.innerHTML = '';
     
-    // Load messages
-    conversation.messages.forEach(message => {
-      const sender = message.role === 'user' ? 'user' : 'agent';
-      addMessageToChat(message.content, sender, message.agentType);
-    });
+    // Load messages safely
+    if (conversation.messages && Array.isArray(conversation.messages)) {
+      conversation.messages.forEach(message => {
+        const sender = message.role === 'user' ? 'user' : 'agent';
+        addMessageToChat(message.content, sender, message.agentType);
+      });
+    } else {
+      console.warn('No messages found for conversation');
+    }
     
     // Switch to chat view
     switchView('chat');
@@ -1252,6 +1377,90 @@ async function loadConversation(conversationId) {
     console.log('Conversation loaded successfully');
   } catch (error) {
     console.error('Failed to load conversation:', error);
+    showNotification('Failed to load conversation', 'error');
+  }
+}
+
+async function editConversationTitle(conversationId) {
+  const conversationItem = document.querySelector(`[data-conversation-id="${conversationId}"]`);
+  if (!conversationItem) return;
+  
+  const titleElement = conversationItem.querySelector('.conversation-title');
+  const editInput = conversationItem.querySelector('.conversation-title-edit');
+  const editBtn = conversationItem.querySelector('.edit-title-btn');
+  
+  if (!titleElement || !editInput || !editBtn) return;
+  
+  // Toggle edit mode
+  const isEditing = editInput.style.display !== 'none';
+  
+  if (isEditing) {
+    // Save the edit
+    const newTitle = editInput.value.trim();
+    
+    // Validate title
+    if (!newTitle) {
+      showNotification('Title cannot be empty', 'error');
+      editInput.focus();
+      return;
+    }
+    
+    if (newTitle !== titleElement.textContent) {
+      try {
+        await agenWorkDB.updateConversation(conversationId, { title: newTitle });
+        titleElement.textContent = newTitle;
+        showNotification('Title updated successfully', 'success');
+        
+        // Update active conversation title if this is the current conversation
+        if (currentConversationId === conversationId) {
+          updateActiveConversationTitle(newTitle);
+        }
+      } catch (error) {
+        console.error('Failed to update conversation title:', error);
+        showNotification('Failed to update title', 'error');
+        editInput.value = titleElement.textContent; // Reset to original
+        return;
+      }
+    }
+    
+    // Exit edit mode
+    titleElement.style.display = 'block';
+    editInput.style.display = 'none';
+    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    editBtn.title = 'Edit title';
+  } else {
+    // Enter edit mode
+    titleElement.style.display = 'none';
+    editInput.style.display = 'block';
+    editInput.focus();
+    editInput.select();
+    editBtn.innerHTML = '<i class="fas fa-check"></i>';
+    editBtn.title = 'Save title';
+    
+    // Handle Enter key to save
+    editInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        editConversationTitle(conversationId);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        // Cancel edit
+        editInput.value = titleElement.textContent;
+        titleElement.style.display = 'block';
+        editInput.style.display = 'none';
+        editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+        editBtn.title = 'Edit title';
+      }
+    };
+    
+    // Handle blur to save
+    editInput.onblur = () => {
+      setTimeout(() => {
+        if (editInput.style.display !== 'none') {
+          editConversationTitle(conversationId);
+        }
+      }, 100);
+    };
   }
 }
 

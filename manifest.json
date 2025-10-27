@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["js/content.js"],
+      "js": ["js/ai-agents.js", "js/content.js"],
       "css": ["css/content.css"]
     }
   ],
@@ -42,6 +42,7 @@
         "images/*",
         "css/*",
         "js/floating-icon.js",
+        "js/ai-agents.js",
         "popup.html",
         "js/popup.js",
         "js/dexie.min.js",
@@ -51,5 +52,8 @@
       ],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
 }

@@ -1438,3 +1438,104 @@ select:focus-visible {
   font-size: var(--font-size-sm);
   margin: 0;
 }
+
+/* AI Status Styles */
+.ai-status {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: rgba(102, 126, 234, 0.05);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.ai-status-info {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.ai-status-info small {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ai-agents-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+}
+
+.ai-agents-status i {
+  margin-right: var(--spacing-xs);
+  width: 12px;
+}
+
+.text-success {
+  color: var(--success-color);
+}
+
+.text-warning {
+  color: var(--warning-color);
+}
+
+.text-danger {
+  color: var(--danger-color);
+}
+
+/* AI Warning Message */
+.message.ai-warning {
+  border-left: 4px solid var(--warning-color);
+}
+
+.message.ai-warning .message-bubble {
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+/* AI Progress Indicator */
+.ai-progress {
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm);
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.ai-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 2px;
+  margin-top: var(--spacing-xs);
+  overflow: hidden;
+}
+
+.ai-progress-fill {
+  height: 100%;
+  background: var(--primary-gradient);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+/* Dark theme for AI status */
+[data-theme="dark"] .ai-status {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: rgba(102, 126, 234, 0.2);
+}
+
+[data-theme="dark"] .message.ai-warning .message-bubble {
+  background: rgba(255, 193, 7, 0.15);
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+[data-theme="dark"] .ai-progress {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+[data-theme="dark"] .ai-progress-bar {
+  background: rgba(102, 126, 234, 0.2);
+}

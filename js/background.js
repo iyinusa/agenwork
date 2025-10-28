@@ -147,38 +147,19 @@ async function handleFloatingIconToggle(enabled, tabId) {
 }
 
 // Initialize AI session based on agent type
+// Note: AI APIs are not available in service workers (background scripts)
+// This functionality is handled in the popup/content scripts
 async function initializeAISession(agentType) {
   try {
-    switch (agentType) {
-      case 'summarizer':
-        if ('ai' in window && 'summarizer' in window.ai) {
-          return await window.ai.summarizer.create();
-        }
-        throw new Error('Summarizer API not available');
-        
-      case 'translator':
-        if ('ai' in window && 'translator' in window.ai) {
-          return await window.ai.translator.create();
-        }
-        throw new Error('Translator API not available');
-        
-      case 'writer':
-        if ('ai' in window && 'writer' in window.ai) {
-          return await window.ai.writer.create();
-        }
-        throw new Error('Writer API not available');
-        
-      case 'prompter':
-        if ('ai' in window && 'languageModel' in window.ai) {
-          return await window.ai.languageModel.create();
-        }
-        throw new Error('Prompt API not available');
-        
-      default:
-        throw new Error('Unknown agent type: ' + agentType);
-    }
+    // Since AI APIs are not available in service workers,
+    // we return a message indicating this should be handled in the popup
+    return {
+      success: false,
+      error: 'AI APIs must be initialized in popup context',
+      agentType: agentType
+    };
   } catch (error) {
-    console.error('Error initializing AI session:', error);
+    console.error('Error in AI session initialization:', error);
     throw error;
   }
 }

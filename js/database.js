@@ -132,11 +132,13 @@ class AgenWorkDatabase {
       const conversation = await this.db.conversations.get(id);
       if (conversation) {
         // Load messages for this conversation
-        conversation.messages = await this.db.messages
+        const messages = await this.db.messages
           .where('conversationId')
           .equals(id)
-          .orderBy('timestamp')
           .toArray();
+        
+        // Sort messages by timestamp
+        conversation.messages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       }
       return conversation;
     } catch (error) {
@@ -232,11 +234,13 @@ class AgenWorkDatabase {
 
   async getMessages(conversationId) {
     try {
-      return await this.db.messages
+      const messages = await this.db.messages
         .where('conversationId')
         .equals(conversationId)
-        .orderBy('timestamp')
         .toArray();
+      
+      // Sort messages by timestamp
+      return messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     } catch (error) {
       console.error('Failed to get messages:', error);
       return [];

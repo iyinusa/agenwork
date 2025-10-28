@@ -15,14 +15,27 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Database initialization completed successfully');
     // Load settings after database is ready
     loadSettings();
+    // Initialize AI Agents
+    initializeAIAgents();
   }).catch(error => {
     console.error('Database initialization failed:', error.message || error.toString() || error);
     // Fall back to loading settings without database
     loadSettings();
+    // Still try to initialize AI Agents
+    initializeAIAgents();
   });
   
   // Handle floating mode messaging
   initializeFloatingMode();
+  
+  // Listen for AI progress updates
+  if (chrome.runtime) {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === 'AI_PROGRESS') {
+        handleAIProgress(message.agentType, message.progress);
+      }
+    });
+  }
 });
 
 // Initialize floating mode communication
@@ -68,6 +81,7 @@ function handleFloatingModeInit(enabled) {
 let currentConversationId = null;
 let db = null;
 let currentView = 'chat';
+let aiAgents = null;
 
 // Initialize popup
 function initializePopup() {
@@ -115,6 +129,172 @@ function updateVersionFromManifest() {
   } catch (error) {
     console.error('Error getting manifest version:', error);
   }
+}
+
+// Initialize AI Agents
+async function initializeAIAgents() {
+  try {
+    console.log('Initializing AI Agents...');
+    updateStatus('Initializing AI...', 'processing');
+    
+    // Create AI Agents instance
+    aiAgents = new AIAgents();
+    
+    // Log AI API availability for debugging
+    const support = AIAgents.isSupported();
+    console.log('AI API Support Check:', support);
+    
+    // Initialize the AI system
+    const initialized = await aiAgents.initialize();
+    
+    if (initialized) {
+      console.log('AI Agents initialized successfully');
+      
+      // Check capabilities and update UI
+      const capabilities = await aiAgents.getCapabilities();
+      console.log('AI Capabilities:', capabilities);
+      
+      // Update status based on capabilities
+      const availableAgents = Object.values(capabilities).filter(cap => cap.supported && cap.available).length;
+      const supportedAgents = Object.values(capabilities).filter(cap => cap.supported).length;
+      
+      if (availableAgents > 0) {
+        if (availableAgents === supportedAgents) {
+          updateStatus(`AI Ready (${availableAgents}/${supportedAgents} agents)`, 'success');
+        } else {
+          updateStatus(`AI Ready (${availableAgents}/${supportedAgents} agents ready)`, 'success');
+        }
+      } else if (supportedAgents > 0) {
+        updateStatus(`AI Downloading (${supportedAgents} agents supported)`, 'processing');
+      } else {
+        updateStatus('AI Limited (Browser not supported)', 'warning');
+      }
+      
+      // Show AI status in welcome message
+      updateAIStatus(capabilities);
+      
+    } else {
+      throw new Error('Failed to initialize AI system');
+    }
+    
+  } catch (error) {
+    console.error('Error initializing AI Agents:', error);
+    updateStatus('AI Unavailable', 'error');
+    
+    // Show fallback message
+    showAIUnavailableMessage();
+  }
+}
+
+// Update AI status in the UI
+function updateAIStatus(capabilities) {
+  // Find or create AI status element in welcome message
+  const welcomeMessage = document.querySelector('.welcome-message');
+  if (!welcomeMessage) return;
+  
+  let aiStatusElement = welcomeMessage.querySelector('.ai-status');
+  if (!aiStatusElement) {
+    aiStatusElement = document.createElement('div');
+    aiStatusElement.className = 'ai-status';
+    welcomeMessage.appendChild(aiStatusElement);
+  }
+  
+  // Helper function to get status icon and text
+  const getAgentStatus = (capability, agentName) => {
+    if (capability.supported && capability.available) {
+      return `<i class="fas fa-check text-success"></i> ${agentName} Ready`;
+    } else if (capability.supported) {
+      return `<i class="fas fa-clock text-warning"></i> ${agentName} Downloading`;
+    } else {
+      return `<i class="fas fa-times text-muted"></i> ${agentName} Unavailable`;
+    }
+  };
+  
+  // Create status HTML for all agents
+  const summarizerStatus = getAgentStatus(capabilities.summarizer, 'Summarizer');
+  const translatorStatus = getAgentStatus(capabilities.translator, 'Translator');
+  const writerStatus = getAgentStatus(capabilities.writer, 'Writer');
+  const prompterStatus = getAgentStatus(capabilities.prompter, 'Prompter');
+    
+  aiStatusElement.innerHTML = `
+    <div class="ai-status-info">
+      <small>AI Agents Status:</small>
+      <div class="ai-agents-status">
+        ${prompterStatus}<br>
+        ${summarizerStatus}<br>
+        ${translatorStatus}<br>
+        ${writerStatus}
+      </div>
+    </div>
+  `;
+}
+
+// Show AI unavailable message
+function showAIUnavailableMessage() {
+  const markdownMessage = `⚠️ **Chrome AI APIs not available**
+
+The Chrome built-in AI APIs are not available in this browser or version. Please ensure you're using **Chrome 127+** with AI features enabled.
+
+Some functionality may be limited to basic responses.`;
+
+  addMessageToChat(markdownMessage, 'agent');
+}
+
+// Handle AI progress updates
+function handleAIProgress(agentType, progress) {
+  const statusText = `Downloading ${agentType} model... ${progress.toFixed(1)}%`;
+  updateStatus(statusText, 'processing');
+  
+  // Show progress in messages if first download
+  showDownloadProgress(agentType, progress);
+  
+  console.log(`AI Progress - ${agentType}: ${progress.toFixed(1)}%`);
+}
+
+// Show download progress in chat
+function showDownloadProgress(agentType, progress) {
+  const messagesContainer = document.getElementById('messagesContainer');
+  
+  // Find existing progress message or create new one
+  let progressMsg = messagesContainer.querySelector(`.ai-download-progress[data-agent="${agentType}"]`);
+  
+  if (!progressMsg) {
+    progressMsg = document.createElement('div');
+    progressMsg.className = 'message agent ai-download-progress';
+    progressMsg.setAttribute('data-agent', agentType);
+    progressMsg.innerHTML = `
+      <div class="message-avatar">⬇️</div>
+      <div class="message-bubble">
+        <strong>Downloading ${agentType} AI model...</strong>
+        <div class="ai-progress">
+          <div class="ai-progress-bar">
+            <div class="ai-progress-fill" style="width: 0%"></div>
+          </div>
+          <small>This may take a few minutes on first use.</small>
+        </div>
+      </div>
+    `;
+    messagesContainer.appendChild(progressMsg);
+  }
+  
+  // Update progress bar
+  const progressFill = progressMsg.querySelector('.ai-progress-fill');
+  if (progressFill) {
+    progressFill.style.width = `${progress}%`;
+  }
+  
+  // Remove message when complete
+  if (progress >= 100) {
+    setTimeout(() => {
+      progressMsg.remove();
+    }, 2000);
+  }
+  
+  // Scroll to bottom
+  messagesContainer.scrollTo({
+    top: messagesContainer.scrollHeight,
+    behavior: 'smooth'
+  });
 }
 
 // Initialize event listeners
@@ -281,11 +461,13 @@ async function sendMessage() {
     // Hide typing indicator
     hideTypingIndicator();
     
-    // Add AI response to chat
-    addMessageToChat(response, 'agent');
-    
-    // Save conversation
-    await saveConversation(message, response, agentType);
+    // Add AI response to chat (only if there's a response)
+    if (response) {
+      addMessageToChat(response, 'agent');
+      
+      // Save conversation
+      await saveConversation(message, response, agentType);
+    }
     
   } catch (error) {
     console.error('Error processing message:', error);
@@ -299,90 +481,437 @@ async function sendMessage() {
 async function processMessage(message) {
   updateStatus('Processing message...', 'processing');
   
-  // Detect intent using the prompter agent
-  const intent = await detectIntent(message);
-  
-  let response = '';
-  
-  // Route to appropriate agent based on intent
-  switch (intent.primary) {
-    case 'summarize':
-      response = await handleSummarizeRequest(message, intent);
-      break;
-    case 'translate':
-      response = await handleTranslateRequest(message, intent);
-      break;
-    case 'write':
-      response = await handleWriteRequest(message, intent);
-      break;
-    case 'research':
-      response = await handleResearchRequest(message, intent);
-      break;
-    default:
-      response = await handleGeneralRequest(message);
+  // Check for special demo commands
+  if (message.toLowerCase().includes('markdown demo') || message.toLowerCase().includes('show demo')) {
+    updateStatus('Ready', 'success');
+    showMarkdownDemo();
+    return {
+      response: null, // Already added to chat
+      agentType: 'prompter'
+    };
   }
   
-  updateStatus('Ready', 'success');
-  return {
-    response: response,
-    agentType: intent.primary === 'general' ? 'prompter' : intent.primary + 'r'
-  };
+  // Get current page context for better AI intent detection
+  updateStatus('Analyzing your request...', 'processing');
+  let pageContext = null;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab && tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+      pageContext = {
+        title: tab.title,
+        url: tab.url,
+        contentPreview: null // We'll add content preview later if needed
+      };
+    }
+  } catch (error) {
+    console.log('Could not get page context:', error);
+  }
+  
+  // Use AI-powered Prompter agent for coordination
+  updateStatus('Processing with AI...', 'processing');
+  let coordinationResult;
+  
+  try {
+    coordinationResult = await aiAgents.coordinateTask(message, pageContext);
+    
+    // Handle the coordination result
+    let finalResponse = '';
+    const intentInfo = coordinationResult.intentAnalysis;
+    
+    // Add intent analysis info to response if AI-powered
+    if (intentInfo.aiPowered) {
+      finalResponse += `*🤖 AI Analysis: ${intentInfo.reasoning} (${(intentInfo.confidence * 100).toFixed(0)}% confidence)*\n\n`;
+    }
+    
+    // Process all results
+    for (const result of coordinationResult.results) {
+      if (result.type === 'primary') {
+        finalResponse += result.result;
+      } else if (result.type === 'secondary') {
+        finalResponse += `\n\n---\n**Additional ${result.intent} result:**\n${result.result}`;
+      }
+    }
+    
+    updateStatus('Ready', 'success');
+    return {
+      response: finalResponse,
+      agentType: intentInfo.primary === 'research' ? 'prompter' : intentInfo.primary,
+      intentAnalysis: intentInfo
+    };
+    
+  } catch (error) {
+    console.error('AI coordination failed, falling back to simple processing:', error);
+    
+    // Fallback to simple intent detection and processing
+    updateStatus('Processing (fallback mode)...', 'processing');
+    const intent = await detectIntentFallback(message);
+    
+    let response = '';
+    
+    // Route to appropriate agent based on intent
+    switch (intent.primary) {
+      case 'summarize':
+        response = await handleSummarizeRequest(message, intent);
+        break;
+      case 'translate':
+        response = await handleTranslateRequest(message, intent);
+        break;
+      case 'write':
+        response = await handleWriteRequest(message, intent);
+        break;
+      case 'research':
+        response = await handleResearchRequest(message, intent);
+        break;
+      default:
+        response = await handleGeneralRequest(message);
+    }
+    
+    updateStatus('Ready', 'success');
+    return {
+      response: `*⚠️ Fallback mode: ${intent.reasoning}*\n\n${response}`,
+      agentType: intent.primary === 'research' ? 'prompter' : intent.primary,
+      intentAnalysis: intent
+    };
+  }
 }
 
-// Detect user intent
-async function detectIntent(message) {
-  // This is a simplified intent detection
-  // In a real implementation, this would use the Prompter agent with Gemini Nano
-  
+// Fallback intent detection using patterns (when AI fails)
+async function detectIntentFallback(message) {
   const intents = {
-    summarize: ['summarize', 'summary', 'tldr', 'brief', 'overview'],
-    translate: ['translate', 'translation', 'convert language', 'in spanish', 'in french'],
-    write: ['write', 'compose', 'draft', 'create', 'help me write'],
-    research: ['research', 'find', 'search', 'learn about', 'tell me about']
+    summarize: {
+      keywords: ['summarize', 'summary', 'tldr', 'brief', 'overview', 'sum up', 'digest', 'condense'],
+      patterns: [
+        /summarize (this|the|current)? ?(page|article|content|text)/i,
+        /give me a (summary|overview|brief)/i,
+        /what (is|are) the (main|key) points/i,
+        /tldr/i,
+        /can you summarize/i
+      ],
+      contextWords: ['page', 'article', 'content', 'website', 'document']
+    },
+    translate: {
+      keywords: ['translate', 'translation', 'convert', 'language'],
+      patterns: [
+        /translate (this|the|current)? ?(page|text|content)? ?(to|into|in) ?\w+/i,
+        /(spanish|french|german|chinese|japanese|italian|portuguese)\s+(translation|version)/i,
+        /what does this mean in \w+/i,
+        /convert to \w+ language/i
+      ],
+      contextWords: ['spanish', 'french', 'german', 'chinese', 'japanese', 'italian', 'portuguese', 'english']
+    },
+    write: {
+      keywords: ['write', 'compose', 'draft', 'create', 'help me write', 'generate'],
+      patterns: [
+        /help me write (a|an)? ?\w+/i,
+        /compose (a|an)? ?\w+/i,
+        /draft (a|an)? ?\w+/i,
+        /create (a|an)? ?\w+/i,
+        /generate (a|an)? ?\w+/i
+      ],
+      contextWords: ['email', 'letter', 'essay', 'article', 'story', 'message', 'response']
+    },
+    research: {
+      keywords: ['research', 'find', 'search', 'learn', 'tell me about', 'explain', 'what is'],
+      patterns: [
+        /tell me about \w+/i,
+        /what is \w+/i,
+        /explain \w+/i,
+        /research \w+/i,
+        /find (information|info) about/i,
+        /learn (more )?about/i
+      ],
+      contextWords: ['information', 'details', 'facts', 'data', 'knowledge']
+    }
   };
   
   const lowerMessage = message.toLowerCase();
+  const scores = {};
   
-  for (const [intent, keywords] of Object.entries(intents)) {
-    if (keywords.some(keyword => lowerMessage.includes(keyword))) {
-      return { primary: intent, confidence: 0.8 };
+  // Score each intent
+  for (const [intent, config] of Object.entries(intents)) {
+    let score = 0;
+    
+    // Check keywords
+    for (const keyword of config.keywords) {
+      if (lowerMessage.includes(keyword)) {
+        score += 1;
+      }
     }
+    
+    // Check patterns
+    for (const pattern of config.patterns) {
+      if (pattern.test(message)) {
+        score += 2; // Patterns are more specific, higher score
+      }
+    }
+    
+    // Check context words
+    for (const contextWord of config.contextWords) {
+      if (lowerMessage.includes(contextWord)) {
+        score += 0.5;
+      }
+    }
+    
+    scores[intent] = score;
   }
   
-  return { primary: 'general', confidence: 1.0 };
+  // Find the highest scoring intent
+  const maxScore = Math.max(...Object.values(scores));
+  
+  if (maxScore > 0) {
+    const topIntent = Object.keys(scores).find(intent => scores[intent] === maxScore);
+    return { 
+      primary: topIntent, 
+      confidence: Math.min(maxScore / 3, 1.0),
+      secondary: [],
+      reasoning: 'Pattern-based classification (fallback)',
+      craftedPrompt: message,
+      originalMessage: message,
+      aiPowered: false
+    };
+  }
+  
+  return { 
+    primary: 'research', 
+    confidence: 0.5,
+    secondary: [],
+    reasoning: 'Default classification (no clear pattern match)',
+    craftedPrompt: message,
+    originalMessage: message,
+    aiPowered: false
+  };
 }
 
 // Handle different types of requests
 async function handleSummarizeRequest(message, intent) {
-  // Get current page content
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTENT' });
+    updateStatus('Analyzing content...', 'processing');
     
-    if (response.success) {
-      return `Here's a summary of the current page "${response.content.title}":\n\nThis feature will be fully implemented with Chrome's Summarizer API. For now, I can see you're on: ${response.content.url}`;
+    // Check if user wants to summarize current page or provided text
+    const lowerMessage = message.toLowerCase();
+    const isPageSummary = lowerMessage.includes('page') || lowerMessage.includes('this') || 
+                         lowerMessage.includes('current') || lowerMessage.includes('website');
+    
+    if (isPageSummary) {
+      // Try summarizing using content script first (better API access)
+      updateStatus('Checking Summarizer API availability...', 'processing');
+      
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab) {
+          throw new Error('No active tab found');
+        }
+        
+        // First check if API is available in content script context
+        const apiCheck = await chrome.tabs.sendMessage(tab.id, { 
+          type: 'CHECK_SUMMARIZER_API' 
+        });
+        
+        if (apiCheck.success && apiCheck.available) {
+          // Use content script for summarization
+          updateStatus('Generating summary...', 'processing');
+          const result = await chrome.tabs.sendMessage(tab.id, { 
+            type: 'SUMMARIZE_PAGE',
+            options: {
+              type: 'tldr',
+              format: 'markdown',
+              length: 'medium'
+            }
+          });
+          
+          if (result.success) {
+            return `## Summary of "${result.result.title}"\n\n${result.result.summary}\n\n---\n*Summarized ${result.result.wordCount} words from: ${result.result.url}*`;
+          } else {
+            throw new Error(result.error);
+          }
+        } else {
+          // Fall back to AI Agents method if content script doesn't have access
+          if (!aiAgents) {
+            throw new Error('AI system not initialized and content script API unavailable');
+          }
+          
+          updateStatus('Extracting page content...', 'processing');
+          const result = await aiAgents.summarizeCurrentPage();
+          return `## Summary of "${result.title}"\n\n${result.summary}\n\n---\n*Summarized ${result.wordCount} words from: ${result.url}*`;
+        }
+        
+      } catch (tabError) {
+        console.warn('Content script approach failed, falling back to popup context:', tabError);
+        
+        // Final fallback to AI Agents in popup context
+        if (!aiAgents) {
+          throw new Error('AI system not initialized and content script unavailable');
+        }
+        
+        updateStatus('Extracting page content...', 'processing');
+        const result = await aiAgents.summarizeCurrentPage();
+        return `## Summary of "${result.title}"\n\n${result.summary}\n\n---\n*Summarized ${result.wordCount} words from: ${result.url}*`;
+      }
+      
+    } else {
+      // For text summarization, try AI Agents first
+      const textToSummarize = extractTextFromMessage(message);
+      
+      if (textToSummarize && textToSummarize.length > 50) {
+        if (!aiAgents) {
+          throw new Error('AI system not initialized');
+        }
+        updateStatus('Generating summary...', 'processing');
+        const summary = await aiAgents.summarizeText(textToSummarize);
+        return `## Summary\n\n${summary}`;
+      } else {
+        // Default to current page if no specific text provided
+        return await handleSummarizeRequest('summarize this page', intent);
+      }
     }
+    
   } catch (error) {
-    return "I'd be happy to help summarize content! The Summarizer AI agent will be fully implemented with Chrome's built-in Summarizer API.";
+    console.error('Error in summarization:', error);
+    
+    // Provide helpful error messages
+    if (error.message.includes('not available') || error.message.includes('not initialized')) {
+      return "❌ **Summarizer Not Available**\n\nThe Chrome Summarizer API is not available. This could be due to:\n\n• **Permission Policy**: Extension popups have limited API access\n• **Chrome Version**: Requires Chrome 138+ \n• **System Requirements**: 16GB RAM, 22GB storage\n• **AI Features**: Need to be enabled in Chrome flags\n\n**Try this:**\n1. Enable `chrome://flags/#optimization-guide-on-device-model`\n2. Restart Chrome\n3. Make sure you have sufficient system resources\n\nI can still help with other tasks!";
+    } else if (error.message.includes('No active tab')) {
+      return "❌ **Cannot Access Page**\n\nI couldn't access the current page to summarize it. Please make sure you're on a webpage and try again.";
+    } else if (error.message.includes('No meaningful content')) {
+      return "❌ **No Content Found**\n\nI couldn't find meaningful content to summarize on this page. Try navigating to an article or page with more text content.";
+    } else if (error.message.includes('Cannot access page content') || error.message.includes('page restrictions')) {
+      return "❌ **Page Access Restricted**\n\nI cannot access the content of this page due to browser security restrictions. This can happen on:\n\n• Chrome internal pages (chrome://)\n• Extension pages\n• Some secure websites\n\nTry navigating to a regular webpage with content to summarize.";
+    } else if (error.message.includes('Failed to extract page content')) {
+      return "❌ **Content Extraction Failed**\n\nI had trouble extracting content from this page. This might be because:\n\n• The page is still loading\n• The content is generated dynamically\n• The page has restricted access\n\nTry refreshing the page and trying again, or try a different webpage.";
+    } else {
+      return `❌ **Summarization Error**\n\nSorry, I encountered an error while trying to summarize: ${error.message}\n\n**Possible Solutions:**\n• Make sure you're on a regular webpage (not chrome:// pages)\n• Try refreshing the page\n• Check that Chrome's AI features are enabled\n• Ensure sufficient system resources\n\nPlease try again or try a different page.`;
+    }
+  }
+}
+
+// Extract text to summarize from user message
+function extractTextFromMessage(message) {
+  // Look for quoted text or text after "summarize"
+  const quotedTextMatch = message.match(/["']([^"']+)["']/);
+  if (quotedTextMatch) {
+    return quotedTextMatch[1];
   }
   
-  return "I'd be happy to help summarize content! Please make sure you're on a page you'd like me to summarize.";
+  // Look for text after "summarize this:"
+  const colonMatch = message.match(/summarize this:?\s*(.+)/i);
+  if (colonMatch) {
+    return colonMatch[1];
+  }
+  
+  // Look for text after "summarize"
+  const summaryMatch = message.match(/summarize\s+(.+)/i);
+  if (summaryMatch && !summaryMatch[1].toLowerCase().includes('page')) {
+    return summaryMatch[1];
+  }
+  
+  return null;
 }
 
 async function handleTranslateRequest(message, intent) {
-  return "I can help with translation! The Translator AI agent will be implemented using Chrome's built-in Translator API. What would you like me to translate?";
+  return `## 🌐 Translation Assistant
+
+I can help with translation! The **Translator AI agent** will be implemented using Chrome's built-in Translator API.
+
+**What would you like me to translate?**
+
+*Coming soon: Real-time translation powered by Chrome's built-in AI.*`;
 }
 
 async function handleWriteRequest(message, intent) {
-  return "I'm here to help with your writing! The Writer AI agent will use Chrome's built-in Writer API to assist with composing, editing, and improving text. What would you like help writing?";
+  return `## ✍️ Writing Assistant
+
+I'm here to help with your writing! The **Writer AI agent** uses Chrome's built-in Writer API to assist with:
+
+- **Composing** new content
+- **Editing** existing text  
+- **Improving** writing style and clarity
+
+**What would you like help writing?**
+
+*Powered by Chrome's advanced AI writing capabilities.*`;
 }
 
 async function handleResearchRequest(message, intent) {
-  return "I can help you research topics! I'll use Chrome's built-in AI to analyze web content and provide insights. What would you like to research?";
+  try {
+    // Try to use the AI agents for research
+    if (aiAgents && aiAgents.prompter) {
+      // Use the AI agent's research capabilities
+      return await aiAgents.handleResearchQuery(intent.craftedPrompt || message);
+    } else {
+      // Initialize AI agents if not already done
+      if (!aiAgents.initialized) {
+        await aiAgents.initialize();
+      }
+      
+      // Create prompter and handle research
+      await aiAgents.createPrompter();
+      return await aiAgents.handleResearchQuery(intent.craftedPrompt || message);
+    }
+  } catch (error) {
+    console.error('Research request failed:', error);
+    
+    // Fallback response
+    return `## 🔍 Research Assistant
+
+I'm having trouble accessing the AI research capabilities right now. This might be because:
+
+- Chrome's built-in AI features need to be enabled
+- Your Chrome version needs to be updated (Chrome 128+ required)
+- The AI model needs to be downloaded first
+
+**Your question:** "${message}"
+
+**To enable AI research:**
+1. Update Chrome to version 128 or higher
+2. Enable Chrome AI flags or join the Origin Trial
+3. Try your question again
+
+*For now, you can try using the summarizer or other features while we work on getting research AI online.*`;
+  }
 }
 
 async function handleGeneralRequest(message) {
-  return "Thanks for your message! I'm AgenWork, your smart browsing assistant. I can help with summarizing content, translating text, writing assistance, and research. How can I help you today?";
+  try {
+    // Try to use the AI prompter for general queries
+    if (aiAgents && aiAgents.prompter) {
+      return await aiAgents.handleResearchQuery(message);
+    } else {
+      // Initialize AI agents if not already done
+      if (!aiAgents.initialized) {
+        await aiAgents.initialize();
+      }
+      
+      // Create prompter and handle general query
+      await aiAgents.createPrompter();
+      return await aiAgents.handleResearchQuery(message);
+    }
+  } catch (error) {
+    console.error('General request failed:', error);
+    
+    // Fallback response
+    return `## 👋 Welcome to AgenWork!
+
+Thanks for your message: "${message}"
+
+I'm **AgenWork**, your smart browsing assistant powered by Chrome's built-in AI. I'm having trouble accessing the full AI capabilities right now, but here's how I can help:
+
+### 🚀 Available Features:
+
+- **📄 Summarizing** content from web pages
+- **🌐 Translating** text between languages  
+- **✍️ Writing** assistance and editing
+- **🔍 Research** and information gathering
+
+**To unlock full AI capabilities:**
+1. Update Chrome to version 128 or higher
+2. Enable Chrome AI flags or join the Origin Trial
+3. Allow AI model download when prompted
+
+**How can I help you today?**
+
+*Try asking me to summarize this page, or use the quick action buttons above!*`;
+  }
 }
 
 // Handle quick actions
@@ -391,22 +920,30 @@ function handleQuickAction(action) {
   
   switch (action) {
     case 'summarize':
-      messageInput.value = 'Please summarize this page for me';
-      break;
+      messageInput.value = 'Summarize this page';
+      // Auto-send the summarization request
+      setTimeout(() => {
+        sendMessage();
+      }, 100);
+      return; // Don't focus input since we're auto-sending
+      
     case 'translate':
       messageInput.value = 'Translate this page to ';
       break;
+      
     case 'write':
       messageInput.value = 'Help me write ';
       break;
   }
   
   messageInput.focus();
+  // Move cursor to end
+  messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
   document.getElementById('sendBtn').disabled = false;
 }
 
 // Add message to chat
-function addMessageToChat(message, sender) {
+function addMessageToChat(message, sender, agentType = 'prompter') {
   const messagesContainer = document.getElementById('messagesContainer');
   
   // Hide welcome message if it exists
@@ -429,8 +966,25 @@ function addMessageToChat(message, sender) {
   
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
-  bubble.textContent = message;
   
+  // Create markdown content container
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'markdown-content';
+  
+  // Render markdown for agent messages, keep plain text for user messages
+  if (sender === 'agent' && window.MarkdownRenderer) {
+    try {
+      const renderedHtml = MarkdownRenderer.render(message);
+      contentDiv.innerHTML = renderedHtml;
+    } catch (error) {
+      console.warn('Markdown rendering failed, using plain text:', error);
+      contentDiv.textContent = message;
+    }
+  } else {
+    contentDiv.textContent = message;
+  }
+  
+  bubble.appendChild(contentDiv);
   messageElement.appendChild(avatar);
   messageElement.appendChild(bubble);
   
@@ -463,6 +1017,56 @@ function showWelcomeMessage() {
   if (welcomeMessage) {
     welcomeMessage.style.display = 'block';
   }
+}
+
+// Show markdown demo (for testing and demonstration purposes)
+function showMarkdownDemo() {
+  const demoContent = `# 🎉 Markdown Rendering Demo
+
+Welcome to **AgenWork's** new and improved chat interface! All AI responses now support *beautiful* markdown formatting.
+
+## ✨ Features
+
+### Text Formatting
+- **Bold text** for emphasis
+- *Italic text* for style  
+- ~~Strikethrough~~ for corrections
+- \`inline code\` for technical terms
+
+### Code Blocks
+Here's a sample JavaScript function:
+
+\`\`\`javascript
+function greetUser(name) {
+  console.log(\`Hello, \${name}! Welcome to AgenWork.\`);
+  return \`👋 Welcome \${name}!\`;
+}
+\`\`\`
+
+### Lists and Organization
+1. **Numbered lists** for sequences
+2. **Bullet points** for features
+   - Sub-items work too
+   - With proper indentation
+
+### Quotes and Links
+> "The best AI assistant is one that presents information clearly and beautifully."
+> — *AgenWork Team*
+
+Visit our [documentation](https://example.com) for more details.
+
+### Tables
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Markdown | ✅ Active | Fully implemented |
+| Themes | ✅ Active | Light & Dark modes |
+| AI Agents | 🚧 Beta | Chrome AI integration |
+
+---
+
+**Try it yourself!** Ask me anything and see how responses are now beautifully formatted with professional markdown styling. 🚀`;
+
+  addMessageToChat(demoContent, 'agent');
 }
 
 // Update status
@@ -799,42 +1403,47 @@ function createConversationItem(conversation) {
   item.className = 'conversation-item';
   item.setAttribute('data-conversation-id', conversation.id);
   
-  // Determine agent icon
-  const agentIcons = {
-    'prompter': 'fas fa-comments',
-    'summarizer': 'fas fa-file-alt',
-    'translator': 'fas fa-language',
-    'writer': 'fas fa-pen'
-  };
-  
-  const agentIcon = agentIcons[conversation.agentType] || 'fas fa-comments';
-  
   item.innerHTML = `
     <div class="conversation-header">
-      <div class="conversation-icon">
-        <i class="${agentIcon}"></i>
-      </div>
       <div class="conversation-info">
-        <div class="conversation-title">${conversation.title}</div>
+        <div class="conversation-title-container">
+          <div class="conversation-title" data-conversation-id="${conversation.id}">${conversation.title}</div>
+          <input type="text" class="conversation-title-edit" value="${conversation.title}" style="display: none;">
+        </div>
         <div class="conversation-meta">
           <span class="conversation-date">${formatDate(conversation.updatedAt)}</span>
           <span class="conversation-count">${conversation.messageCount || 0} messages</span>
         </div>
       </div>
       <div class="conversation-actions">
-        <button class="conversation-action-btn" onclick="loadConversation(${conversation.id})" title="Load conversation">
-          <i class="fas fa-folder-open"></i>
+        <button class="conversation-action-btn edit-title-btn" title="Edit title">
+          <i class="fas fa-edit"></i>
         </button>
-        <button class="conversation-action-btn" onclick="deleteConversation(${conversation.id})" title="Delete conversation">
+        <button class="conversation-action-btn delete-btn" title="Delete conversation">
           <i class="fas fa-trash"></i>
         </button>
       </div>
     </div>
   `;
   
+  // Add event listeners for action buttons
+  const editBtn = item.querySelector('.edit-title-btn');
+  const deleteBtn = item.querySelector('.delete-btn');
+  
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    editConversationTitle(conversation.id);
+  });
+  
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteConversation(conversation.id);
+  });
+  
   // Add click handler to load conversation
   item.addEventListener('click', (e) => {
-    if (!e.target.closest('.conversation-actions')) {
+    // Don't load conversation if clicking on actions or title edit
+    if (!e.target.closest('.conversation-actions') && !e.target.closest('.conversation-title-edit')) {
       loadConversation(conversation.id);
     }
   });
@@ -864,9 +1473,17 @@ function formatDate(date) {
 
 async function loadConversation(conversationId) {
   try {
+    // Validate conversationId
+    if (!conversationId) {
+      console.error('Invalid conversation ID');
+      showNotification('Invalid conversation ID', 'error');
+      return;
+    }
+    
     const conversation = await agenWorkDB.getConversation(conversationId);
     if (!conversation) {
       console.error('Conversation not found');
+      showNotification('Conversation not found', 'error');
       return;
     }
     
@@ -874,13 +1491,21 @@ async function loadConversation(conversationId) {
     
     // Clear current messages
     const messagesContainer = document.getElementById('messagesContainer');
+    if (!messagesContainer) {
+      console.error('Messages container not found');
+      return;
+    }
     messagesContainer.innerHTML = '';
     
-    // Load messages
-    conversation.messages.forEach(message => {
-      const sender = message.role === 'user' ? 'user' : 'agent';
-      addMessageToChat(message.content, sender, message.agentType);
-    });
+    // Load messages safely
+    if (conversation.messages && Array.isArray(conversation.messages)) {
+      conversation.messages.forEach(message => {
+        const sender = message.role === 'user' ? 'user' : 'agent';
+        addMessageToChat(message.content, sender, message.agentType);
+      });
+    } else {
+      console.warn('No messages found for conversation');
+    }
     
     // Switch to chat view
     switchView('chat');
@@ -891,6 +1516,90 @@ async function loadConversation(conversationId) {
     console.log('Conversation loaded successfully');
   } catch (error) {
     console.error('Failed to load conversation:', error);
+    showNotification('Failed to load conversation', 'error');
+  }
+}
+
+async function editConversationTitle(conversationId) {
+  const conversationItem = document.querySelector(`[data-conversation-id="${conversationId}"]`);
+  if (!conversationItem) return;
+  
+  const titleElement = conversationItem.querySelector('.conversation-title');
+  const editInput = conversationItem.querySelector('.conversation-title-edit');
+  const editBtn = conversationItem.querySelector('.edit-title-btn');
+  
+  if (!titleElement || !editInput || !editBtn) return;
+  
+  // Toggle edit mode
+  const isEditing = editInput.style.display !== 'none';
+  
+  if (isEditing) {
+    // Save the edit
+    const newTitle = editInput.value.trim();
+    
+    // Validate title
+    if (!newTitle) {
+      showNotification('Title cannot be empty', 'error');
+      editInput.focus();
+      return;
+    }
+    
+    if (newTitle !== titleElement.textContent) {
+      try {
+        await agenWorkDB.updateConversation(conversationId, { title: newTitle });
+        titleElement.textContent = newTitle;
+        showNotification('Title updated successfully', 'success');
+        
+        // Update active conversation title if this is the current conversation
+        if (currentConversationId === conversationId) {
+          updateActiveConversationTitle(newTitle);
+        }
+      } catch (error) {
+        console.error('Failed to update conversation title:', error);
+        showNotification('Failed to update title', 'error');
+        editInput.value = titleElement.textContent; // Reset to original
+        return;
+      }
+    }
+    
+    // Exit edit mode
+    titleElement.style.display = 'block';
+    editInput.style.display = 'none';
+    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    editBtn.title = 'Edit title';
+  } else {
+    // Enter edit mode
+    titleElement.style.display = 'none';
+    editInput.style.display = 'block';
+    editInput.focus();
+    editInput.select();
+    editBtn.innerHTML = '<i class="fas fa-check"></i>';
+    editBtn.title = 'Save title';
+    
+    // Handle Enter key to save
+    editInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        editConversationTitle(conversationId);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        // Cancel edit
+        editInput.value = titleElement.textContent;
+        titleElement.style.display = 'block';
+        editInput.style.display = 'none';
+        editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+        editBtn.title = 'Edit title';
+      }
+    };
+    
+    // Handle blur to save
+    editInput.onblur = () => {
+      setTimeout(() => {
+        if (editInput.style.display !== 'none') {
+          editConversationTitle(conversationId);
+        }
+      }, 100);
+    };
   }
 }
 

@@ -74,3 +74,14 @@
 .fa-comments:before { content: "\f086"; }
 .fa-send:before,
 .fa-paper-plane:before { content: "\f1d8"; }
+.fa-trash:before,
+.fa-trash-can:before { content: "\f2ed"; }
+.fa-folder-open:before { content: "\f07c"; }
+.fa-file-alt:before { content: "\f15c"; }
+.fa-check:before { content: "\f00c"; }
+.fa-times:before,
+.fa-close:before { content: "\f00d"; }
+.fa-exclamation-triangle:before { content: "\f071"; }
+.fa-check-circle:before { content: "\f058"; }
+.fa-exclamation-circle:before { content: "\f06a"; }
+.fa-info-circle:before { content: "\f05a"; }

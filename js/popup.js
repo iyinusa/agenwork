@@ -155,8 +155,17 @@ async function initializeAIAgents() {
       console.log('AI Capabilities:', capabilities);
       
       // Update status based on capabilities
-      if (capabilities.summarizer.supported) {
-        updateStatus('AI Ready', 'success');
+      const availableAgents = Object.values(capabilities).filter(cap => cap.supported && cap.available).length;
+      const supportedAgents = Object.values(capabilities).filter(cap => cap.supported).length;
+      
+      if (availableAgents > 0) {
+        if (availableAgents === supportedAgents) {
+          updateStatus(`AI Ready (${availableAgents}/${supportedAgents} agents)`, 'success');
+        } else {
+          updateStatus(`AI Ready (${availableAgents}/${supportedAgents} agents ready)`, 'success');
+        }
+      } else if (supportedAgents > 0) {
+        updateStatus(`AI Downloading (${supportedAgents} agents supported)`, 'processing');
       } else {
         updateStatus('AI Limited (Browser not supported)', 'warning');
       }
@@ -190,16 +199,31 @@ function updateAIStatus(capabilities) {
     welcomeMessage.appendChild(aiStatusElement);
   }
   
-  // Create status HTML
-  const summarizerStatus = capabilities.summarizer.supported ? 
-    '<i class="fas fa-check text-success"></i> Summarizer Ready' :
-    '<i class="fas fa-times text-warning"></i> Summarizer Unavailable';
+  // Helper function to get status icon and text
+  const getAgentStatus = (capability, agentName) => {
+    if (capability.supported && capability.available) {
+      return `<i class="fas fa-check text-success"></i> ${agentName} Ready`;
+    } else if (capability.supported) {
+      return `<i class="fas fa-clock text-warning"></i> ${agentName} Downloading`;
+    } else {
+      return `<i class="fas fa-times text-muted"></i> ${agentName} Unavailable`;
+    }
+  };
+  
+  // Create status HTML for all agents
+  const summarizerStatus = getAgentStatus(capabilities.summarizer, 'Summarizer');
+  const translatorStatus = getAgentStatus(capabilities.translator, 'Translator');
+  const writerStatus = getAgentStatus(capabilities.writer, 'Writer');
+  const prompterStatus = getAgentStatus(capabilities.prompter, 'Prompter');
     
   aiStatusElement.innerHTML = `
     <div class="ai-status-info">
-      <small>AI Status:</small>
+      <small>AI Agents Status:</small>
       <div class="ai-agents-status">
-        ${summarizerStatus}
+        ${prompterStatus}<br>
+        ${summarizerStatus}<br>
+        ${translatorStatus}<br>
+        ${writerStatus}
       </div>
     </div>
   `;
@@ -467,40 +491,92 @@ async function processMessage(message) {
     };
   }
   
-  // Detect intent using the prompter agent
-  const intent = await detectIntent(message);
-  
-  let response = '';
-  
-  // Route to appropriate agent based on intent
-  switch (intent.primary) {
-    case 'summarize':
-      response = await handleSummarizeRequest(message, intent);
-      break;
-    case 'translate':
-      response = await handleTranslateRequest(message, intent);
-      break;
-    case 'write':
-      response = await handleWriteRequest(message, intent);
-      break;
-    case 'research':
-      response = await handleResearchRequest(message, intent);
-      break;
-    default:
-      response = await handleGeneralRequest(message);
+  // Get current page context for better AI intent detection
+  updateStatus('Analyzing your request...', 'processing');
+  let pageContext = null;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab && tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+      pageContext = {
+        title: tab.title,
+        url: tab.url,
+        contentPreview: null // We'll add content preview later if needed
+      };
+    }
+  } catch (error) {
+    console.log('Could not get page context:', error);
   }
   
-  updateStatus('Ready', 'success');
-  return {
-    response: response,
-    agentType: intent.primary === 'general' ? 'prompter' : intent.primary + 'r'
-  };
+  // Use AI-powered Prompter agent for coordination
+  updateStatus('Processing with AI...', 'processing');
+  let coordinationResult;
+  
+  try {
+    coordinationResult = await aiAgents.coordinateTask(message, pageContext);
+    
+    // Handle the coordination result
+    let finalResponse = '';
+    const intentInfo = coordinationResult.intentAnalysis;
+    
+    // Add intent analysis info to response if AI-powered
+    if (intentInfo.aiPowered) {
+      finalResponse += `*🤖 AI Analysis: ${intentInfo.reasoning} (${(intentInfo.confidence * 100).toFixed(0)}% confidence)*\n\n`;
+    }
+    
+    // Process all results
+    for (const result of coordinationResult.results) {
+      if (result.type === 'primary') {
+        finalResponse += result.result;
+      } else if (result.type === 'secondary') {
+        finalResponse += `\n\n---\n**Additional ${result.intent} result:**\n${result.result}`;
+      }
+    }
+    
+    updateStatus('Ready', 'success');
+    return {
+      response: finalResponse,
+      agentType: intentInfo.primary === 'research' ? 'prompter' : intentInfo.primary,
+      intentAnalysis: intentInfo
+    };
+    
+  } catch (error) {
+    console.error('AI coordination failed, falling back to simple processing:', error);
+    
+    // Fallback to simple intent detection and processing
+    updateStatus('Processing (fallback mode)...', 'processing');
+    const intent = await detectIntentFallback(message);
+    
+    let response = '';
+    
+    // Route to appropriate agent based on intent
+    switch (intent.primary) {
+      case 'summarize':
+        response = await handleSummarizeRequest(message, intent);
+        break;
+      case 'translate':
+        response = await handleTranslateRequest(message, intent);
+        break;
+      case 'write':
+        response = await handleWriteRequest(message, intent);
+        break;
+      case 'research':
+        response = await handleResearchRequest(message, intent);
+        break;
+      default:
+        response = await handleGeneralRequest(message);
+    }
+    
+    updateStatus('Ready', 'success');
+    return {
+      response: `*⚠️ Fallback mode: ${intent.reasoning}*\n\n${response}`,
+      agentType: intent.primary === 'research' ? 'prompter' : intent.primary,
+      intentAnalysis: intent
+    };
+  }
 }
 
-// Detect user intent
-async function detectIntent(message) {
-  // Enhanced intent detection with multiple patterns and scoring
-  
+// Fallback intent detection using patterns (when AI fails)
+async function detectIntentFallback(message) {
   const intents = {
     summarize: {
       keywords: ['summarize', 'summary', 'tldr', 'brief', 'overview', 'sum up', 'digest', 'condense'],
@@ -586,12 +662,24 @@ async function detectIntent(message) {
     const topIntent = Object.keys(scores).find(intent => scores[intent] === maxScore);
     return { 
       primary: topIntent, 
-      confidence: Math.min(maxScore / 3, 1.0), // Normalize confidence
-      scores: scores 
+      confidence: Math.min(maxScore / 3, 1.0),
+      secondary: [],
+      reasoning: 'Pattern-based classification (fallback)',
+      craftedPrompt: message,
+      originalMessage: message,
+      aiPowered: false
     };
   }
   
-  return { primary: 'general', confidence: 1.0, scores: scores };
+  return { 
+    primary: 'research', 
+    confidence: 0.5,
+    secondary: [],
+    reasoning: 'Default classification (no clear pattern match)',
+    craftedPrompt: message,
+    originalMessage: message,
+    aiPowered: false
+  };
 }
 
 // Handle different types of requests
@@ -625,7 +713,7 @@ async function handleSummarizeRequest(message, intent) {
           const result = await chrome.tabs.sendMessage(tab.id, { 
             type: 'SUMMARIZE_PAGE',
             options: {
-              type: 'key-points',
+              type: 'tldr',
               format: 'markdown',
               length: 'medium'
             }
@@ -745,34 +833,85 @@ I'm here to help with your writing! The **Writer AI agent** uses Chrome's built-
 }
 
 async function handleResearchRequest(message, intent) {
-  return `## 🔍 Research Assistant
+  try {
+    // Try to use the AI agents for research
+    if (aiAgents && aiAgents.prompter) {
+      // Use the AI agent's research capabilities
+      return await aiAgents.handleResearchQuery(intent.craftedPrompt || message);
+    } else {
+      // Initialize AI agents if not already done
+      if (!aiAgents.initialized) {
+        await aiAgents.initialize();
+      }
+      
+      // Create prompter and handle research
+      await aiAgents.createPrompter();
+      return await aiAgents.handleResearchQuery(intent.craftedPrompt || message);
+    }
+  } catch (error) {
+    console.error('Research request failed:', error);
+    
+    // Fallback response
+    return `## 🔍 Research Assistant
 
-I can help you research topics! I'll use Chrome's built-in AI to:
+I'm having trouble accessing the AI research capabilities right now. This might be because:
 
-- **Analyze** web content and data
-- **Provide** insights and summaries
-- **Extract** key information
+- Chrome's built-in AI features need to be enabled
+- Your Chrome version needs to be updated (Chrome 128+ required)
+- The AI model needs to be downloaded first
 
-**What would you like to research?**
+**Your question:** "${message}"
 
-*Intelligent research powered by Chrome's AI.*`;
+**To enable AI research:**
+1. Update Chrome to version 128 or higher
+2. Enable Chrome AI flags or join the Origin Trial
+3. Try your question again
+
+*For now, you can try using the summarizer or other features while we work on getting research AI online.*`;
+  }
 }
 
 async function handleGeneralRequest(message) {
-  return `## 👋 Welcome to AgenWork!
+  try {
+    // Try to use the AI prompter for general queries
+    if (aiAgents && aiAgents.prompter) {
+      return await aiAgents.handleResearchQuery(message);
+    } else {
+      // Initialize AI agents if not already done
+      if (!aiAgents.initialized) {
+        await aiAgents.initialize();
+      }
+      
+      // Create prompter and handle general query
+      await aiAgents.createPrompter();
+      return await aiAgents.handleResearchQuery(message);
+    }
+  } catch (error) {
+    console.error('General request failed:', error);
+    
+    // Fallback response
+    return `## 👋 Welcome to AgenWork!
 
-Thanks for your message! I'm **AgenWork**, your smart browsing assistant powered by Chrome's built-in AI.
+Thanks for your message: "${message}"
 
-### 🚀 How I can help:
+I'm **AgenWork**, your smart browsing assistant powered by Chrome's built-in AI. I'm having trouble accessing the full AI capabilities right now, but here's how I can help:
+
+### 🚀 Available Features:
 
 - **📄 Summarizing** content from web pages
 - **🌐 Translating** text between languages  
 - **✍️ Writing** assistance and editing
 - **🔍 Research** and information gathering
 
+**To unlock full AI capabilities:**
+1. Update Chrome to version 128 or higher
+2. Enable Chrome AI flags or join the Origin Trial
+3. Allow AI model download when prompted
+
 **How can I help you today?**
 
-*Just ask me anything or use the quick action buttons above!*`;
+*Try asking me to summarize this page, or use the quick action buttons above!*`;
+  }
 }
 
 // Handle quick actions

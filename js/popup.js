@@ -140,6 +140,17 @@ async function initializeAIAgents() {
     // Create AI Agents instance
     aiAgents = new AIAgents();
     
+    // Apply saved language preference
+    try {
+      const savedLanguage = await getSavedLanguagePreference();
+      if (savedLanguage) {
+        aiAgents.setPreferredLanguage(savedLanguage);
+        console.log(`Applied saved AI language preference: ${savedLanguage}`);
+      }
+    } catch (error) {
+      console.warn('Could not load saved language preference:', error);
+    }
+    
     // Log AI API availability for debugging
     const support = AIAgents.isSupported();
     console.log('AI API Support Check:', support);
@@ -349,6 +360,7 @@ function initializeEventListeners() {
   document.getElementById('translatorToggle').addEventListener('change', () => saveSettings());
   document.getElementById('writerToggle').addEventListener('change', () => saveSettings());
   document.getElementById('prompterToggle').addEventListener('change', () => saveSettings());
+  document.getElementById('aiLanguageSelect').addEventListener('change', handleLanguageChange);
 }
 
 // Switch between views
@@ -1156,11 +1168,13 @@ function updateUIWithSettings(settings) {
     const translatorToggle = document.getElementById('translatorToggle');
     const writerToggle = document.getElementById('writerToggle');
     const prompterToggle = document.getElementById('prompterToggle');
+    const aiLanguageSelect = document.getElementById('aiLanguageSelect');
     
     if (summarizerToggle) summarizerToggle.checked = settings.aiSettings.summarizer ?? true;
     if (translatorToggle) translatorToggle.checked = settings.aiSettings.translator ?? true;
     if (writerToggle) writerToggle.checked = settings.aiSettings.writer ?? true;
     if (prompterToggle) prompterToggle.checked = settings.aiSettings.prompter ?? true;
+    if (aiLanguageSelect) aiLanguageSelect.value = settings.aiSettings.language ?? 'en';
   }
 }
 
@@ -1173,6 +1187,7 @@ async function saveSettings() {
     const translatorToggle = document.getElementById('translatorToggle');
     const writerToggle = document.getElementById('writerToggle');
     const prompterToggle = document.getElementById('prompterToggle');
+    const aiLanguageSelect = document.getElementById('aiLanguageSelect');
     
     // Save individual settings to database
     const settingsToSave = [
@@ -1181,7 +1196,8 @@ async function saveSettings() {
       { key: 'summarizerEnabled', value: summarizerToggle ? summarizerToggle.checked : true },
       { key: 'translatorEnabled', value: translatorToggle ? translatorToggle.checked : true },
       { key: 'writerEnabled', value: writerToggle ? writerToggle.checked : true },
-      { key: 'prompterEnabled', value: prompterToggle ? prompterToggle.checked : true }
+      { key: 'prompterEnabled', value: prompterToggle ? prompterToggle.checked : true },
+      { key: 'aiLanguage', value: aiLanguageSelect ? aiLanguageSelect.value : 'en' }
     ];
     
     // Save each setting
@@ -1197,7 +1213,8 @@ async function saveSettings() {
         summarizer: summarizerToggle ? summarizerToggle.checked : true,
         translator: translatorToggle ? translatorToggle.checked : true,
         writer: writerToggle ? writerToggle.checked : true,
-        prompter: prompterToggle ? prompterToggle.checked : true
+        prompter: prompterToggle ? prompterToggle.checked : true,
+        language: aiLanguageSelect ? aiLanguageSelect.value : 'en'
       }
     };
     
@@ -1230,6 +1247,28 @@ async function handleThemeChange(e) {
   await saveSettings();
 }
 
+// Handle AI language change
+async function handleLanguageChange(e) {
+  const language = e.target.value;
+  console.log(`AI language changed to: ${language}`);
+  
+  // Update AI agents with new language preference
+  if (aiAgents) {
+    const success = aiAgents.setPreferredLanguage(language);
+    if (success) {
+      showNotification(`AI language set to ${language === 'en' ? 'English' : language === 'es' ? 'Spanish' : 'Japanese'}`, 'success');
+    } else {
+      showNotification('Failed to set AI language', 'error');
+    }
+  }
+  
+  // Save language setting to database
+  await saveSettingToDB('aiLanguage', language);
+  
+  // Also save all settings
+  await saveSettings();
+}
+
 // Apply theme to document
 function applyTheme(theme) {
   if (!theme) theme = 'light'; // Default to light theme
@@ -1245,6 +1284,27 @@ function applyTheme(theme) {
   const themeSelect = document.getElementById('themeSelect');
   if (themeSelect) {
     themeSelect.value = theme;
+  }
+}
+
+// Helper function to get saved language preference
+async function getSavedLanguagePreference() {
+  try {
+    // Try database first
+    if (agenWorkDB && agenWorkDB.isInitialized) {
+      const language = await agenWorkDB.getSetting('aiLanguage');
+      if (language) return language;
+    }
+    
+    // Fall back to Chrome storage
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['aiSettings'], (result) => {
+        resolve(result.aiSettings?.language || 'en');
+      });
+    });
+  } catch (error) {
+    console.warn('Error getting saved language preference:', error);
+    return 'en'; // Default to English
   }
 }
 

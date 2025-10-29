@@ -220,6 +220,7 @@
                     type: 'key-points',
                     format: 'markdown',
                     length: 'short',
+                    outputLanguage: 'en',
                     monitor: (m) => {
                         m.addEventListener('downloadprogress', (e) => {
                             console.log(`Download: ${(e.loaded * 100).toFixed(1)}%`);

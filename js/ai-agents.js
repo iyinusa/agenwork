@@ -8,6 +8,7 @@ class AIAgents {
     this.writer = null;
     this.prompter = null;
     this.initialized = false;
+    this.preferredLanguage = 'en'; // Default to English, supported: 'en', 'es', 'ja'
   }
 
   // Initialize the AI Agents system
@@ -47,6 +48,59 @@ class AIAgents {
       this.initialized = false;
       return false;
     }
+  }
+
+  // Set preferred language for AI operations
+  setPreferredLanguage(language) {
+    const supportedLanguages = ['en', 'es', 'ja'];
+    if (!supportedLanguages.includes(language)) {
+      console.warn(`Language '${language}' not supported. Supported languages: ${supportedLanguages.join(', ')}. Defaulting to 'en'.`);
+      this.preferredLanguage = 'en';
+      return false;
+    }
+    
+    console.log(`Setting preferred AI language to: ${language}`);
+    this.preferredLanguage = language;
+    
+    // If we have active agents, we may need to recreate them with the new language
+    if (this.summarizer) {
+      console.log('Note: Existing summarizer will use the new language on next creation');
+    }
+    
+    return true;
+  }
+
+  // Get current preferred language
+  getPreferredLanguage() {
+    return this.preferredLanguage;
+  }
+
+  // Get output language for AI operations
+  async getOutputLanguage() {
+    // First try to get from Chrome storage (popup settings)
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        const result = await chrome.storage.sync.get(['aiLanguage']);
+        if (result.aiLanguage) {
+          return result.aiLanguage;
+        }
+      }
+    } catch (error) {
+      console.warn('Could not get language from storage:', error);
+    }
+    
+    // Fallback to preferred language
+    return this.preferredLanguage;
+  }
+
+  // Get supported languages for AI operations
+  static getSupportedLanguages() {
+    return {
+      summarizer: ['en', 'es', 'ja'],
+      languageModel: ['en', 'ja', 'es'], // Based on Chrome documentation
+      translator: ['auto-detect'], // Dynamic language detection
+      writer: ['en', 'ja', 'es']
+    };
   }
 
   // Check if browser supports AI APIs (Updated for Chrome 138+ Built-in AI APIs)
@@ -160,6 +214,7 @@ class AIAgents {
         type: 'key-points', // 'key-points', 'tldr', 'teaser', 'headline'
         format: 'markdown', // 'markdown', 'plain-text'
         length: 'medium', // 'short', 'medium', 'long'
+        outputLanguage: this.preferredLanguage, // Required: 'en', 'es', 'ja' - prevents safety warning
         sharedContext: 'This is content from a web page that the user wants summarized.',
         monitor: (m) => {
           m.addEventListener('downloadprogress', (e) => {
@@ -193,10 +248,24 @@ class AIAgents {
   }
 
   // Summarize text content
-  async summarizeText(text, context = '', streaming = false) {
+  async summarizeText(text, context = '', intentResult = null) {
     try {
-      if (!this.summarizer) {
-        await this.createSummarizer();
+      // Use intelligent summarization options if available
+      const outputLanguage = await this.getOutputLanguage();
+      const summaryOptions = {
+        type: intentResult?.summarization_type || 'key-points',
+        length: intentResult?.summarization_length || 'medium',
+        format: 'markdown',
+        outputLanguage: outputLanguage,
+        sharedContext: context || 'Please summarize this text'
+      };
+
+      // Create or recreate summarizer with intelligent options
+      console.log('Creating intelligent summarizer with options:', summaryOptions);
+      const summarizer = await this.createSummarizer(summaryOptions);
+
+      if (!summarizer) {
+        throw new Error('Failed to create intelligent summarizer');
       }
 
       if (!text || text.trim().length === 0) {
@@ -210,20 +279,19 @@ class AIAgents {
         return 'The provided text is too short to summarize effectively.';
       }
 
-      console.log(`Summarizing text (${cleanText.length} characters)...`);
+      console.log(`Intelligently summarizing text (${cleanText.length} characters) with type: ${summaryOptions.type}, length: ${summaryOptions.length}...`);
 
       const options = context ? { context } : {};
-
-      if (streaming) {
-        return this.summarizer.summarizeStreaming(cleanText, options);
-      } else {
-        const summary = await this.summarizer.summarize(cleanText, options);
-        console.log('Summary generated successfully');
-        return summary;
-      }
+      const summary = await summarizer.summarize(cleanText, options);
+      
+      // Clean up
+      summarizer.destroy();
+      
+      console.log('Intelligent summary generated successfully');
+      return summary;
 
     } catch (error) {
-      console.error('Error during summarization:', error);
+      console.error('Error during intelligent summarization:', error);
       throw new Error(`Summarization failed: ${error.message}`);
     }
   }
@@ -280,7 +348,7 @@ class AIAgents {
       const context = `This is content from the webpage titled "${pageData.title}" (${pageData.url}). The user wants a summary of this page.`;
 
       // Summarize the content
-      const summary = await this.summarizeText(pageData.content, context);
+      const summary = await this.summarizeText(pageData.content, context, null);
 
       return {
         title: pageData.title,
@@ -302,7 +370,7 @@ class AIAgents {
           
           if (response && response.success && response.content && response.content.content) {
             const context = `This is content from the webpage titled "${response.content.title}" (${response.content.url}). The user wants a summary of this page.`;
-            const summary = await this.summarizeText(response.content.content, context);
+            const summary = await this.summarizeText(response.content.content, context, null);
             
             return {
               title: response.content.title,
@@ -435,6 +503,13 @@ CLASSIFICATION RULES:
 - A message can have multiple intents - identify the primary one and any secondary intents
 - Consider context clues and implied meanings
 
+SUMMARIZATION TYPE DETECTION:
+When the intent is "summarize", also determine the specific summarization type:
+- "key-points" - User wants bullet points, main points, key takeaways, important points
+- "tldr" - User wants a quick summary, brief overview, short summary, tldr, condensed version
+- "teaser" - User wants an intriguing preview, teaser, hook, something to draw interest
+- "headline" - User wants a title, headline, single sentence summary, main point in headline format
+
 RESPONSE FORMAT:
 Respond with a JSON object containing:
 {
@@ -442,7 +517,9 @@ Respond with a JSON object containing:
   "confidence": 0.0-1.0,
   "secondary": ["intent_name1", "intent_name2"] or null,
   "reasoning": "brief explanation of why this intent was chosen",
-  "crafted_prompt": "an enhanced version of the user message optimized for the target agent"
+  "crafted_prompt": "an enhanced version of the user message optimized for the target agent",
+  "summarization_type": "key-points|tldr|teaser|headline" (only when primary intent is "summarize"),
+  "summarization_length": "short|medium|long" (only when primary intent is "summarize")
 }`;
 
       // Add page context if available
@@ -460,27 +537,25 @@ USER MESSAGE: "${userMessage}"
 
 Analyze this message and respond with the JSON classification:`;
 
-      // Get AI classification with structured output
-      const response = await this.prompter.prompt(fullPrompt, {
-        responseConstraint: {
-          type: "object",
-          properties: {
-            primary: { type: "string", enum: ["summarize", "translate", "write", "research"] },
-            confidence: { type: "number", minimum: 0, maximum: 1 },
-            secondary: { 
-              type: "array", 
-              items: { type: "string", enum: ["summarize", "translate", "write", "research"] },
-              nullable: true
-            },
-            reasoning: { type: "string" },
-            crafted_prompt: { type: "string" }
-          },
-          required: ["primary", "confidence", "reasoning", "crafted_prompt"]
-        }
-      });
+      // Get AI classification - Chrome Built-in AI doesn't support responseConstraint
+      // So we'll rely on the prompt instructions to get structured JSON output
+      const response = await this.prompter.prompt(fullPrompt);
 
-      const result = JSON.parse(response);
-      console.log('AI Intent Detection Result:', result);
+      let result;
+      try {
+        // Try to extract JSON from the response (it might have extra text)
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          result = JSON.parse(jsonMatch[0]);
+        } else {
+          result = JSON.parse(response);
+        }
+        console.log('AI Intent Detection Result:', result);
+      } catch (parseError) {
+        console.warn('Failed to parse AI response as JSON:', parseError);
+        console.log('Raw AI response:', response);
+        throw new Error(`AI response could not be parsed as JSON: ${parseError.message}`);
+      }
 
       return {
         primary: result.primary,
@@ -489,7 +564,10 @@ Analyze this message and respond with the JSON classification:`;
         reasoning: result.reasoning,
         craftedPrompt: result.crafted_prompt,
         originalMessage: userMessage,
-        aiPowered: true
+        aiPowered: true,
+        // Summarization-specific properties
+        summarizationType: result.summarization_type || null,
+        summarizationLength: result.summarization_length || null
       };
 
     } catch (error) {
@@ -575,6 +653,40 @@ Analyze this message and respond with the JSON classification:`;
     
     if (maxScore > 0) {
       const topIntent = Object.keys(scores).find(intent => scores[intent] === maxScore);
+      
+      // If it's a summarize intent, detect the type using pattern matching
+      let summarizationType = null;
+      let summarizationLength = null;
+      
+      if (topIntent === 'summarize') {
+        const lowerMessage = message.toLowerCase();
+        
+        // Detect summarization type
+        if (lowerMessage.includes('tldr') || lowerMessage.includes('brief') || lowerMessage.includes('quick')) {
+          summarizationType = 'tldr';
+        } else if (lowerMessage.includes('key points') || lowerMessage.includes('main points') || 
+                   lowerMessage.includes('bullet') || lowerMessage.includes('list')) {
+          summarizationType = 'key-points';
+        } else if (lowerMessage.includes('teaser') || lowerMessage.includes('preview') || 
+                   lowerMessage.includes('hook') || lowerMessage.includes('intriguing')) {
+          summarizationType = 'teaser';
+        } else if (lowerMessage.includes('headline') || lowerMessage.includes('title') || 
+                   lowerMessage.includes('one sentence')) {
+          summarizationType = 'headline';
+        } else {
+          summarizationType = 'key-points'; // Default
+        }
+        
+        // Detect length
+        if (lowerMessage.includes('short') || lowerMessage.includes('brief') || lowerMessage.includes('quick')) {
+          summarizationLength = 'short';
+        } else if (lowerMessage.includes('long') || lowerMessage.includes('detailed') || lowerMessage.includes('comprehensive')) {
+          summarizationLength = 'long';
+        } else {
+          summarizationLength = 'medium'; // Default
+        }
+      }
+      
       return { 
         primary: topIntent, 
         confidence: Math.min(maxScore / 3, 1.0),
@@ -582,7 +694,9 @@ Analyze this message and respond with the JSON classification:`;
         reasoning: 'Pattern-based classification (fallback)',
         craftedPrompt: message,
         originalMessage: message,
-        aiPowered: false
+        aiPowered: false,
+        summarizationType: summarizationType,
+        summarizationLength: summarizationLength
       };
     }
     
@@ -593,8 +707,37 @@ Analyze this message and respond with the JSON classification:`;
       reasoning: 'Default classification (no clear pattern match)',
       craftedPrompt: message,
       originalMessage: message,
-      aiPowered: false
+      aiPowered: false,
+      summarizationType: null,
+      summarizationLength: null
     };
+  }
+
+  // Extract displayable result from coordination response
+  getDisplayableResult(coordinationResult) {
+    if (!coordinationResult || !coordinationResult.results || coordinationResult.results.length === 0) {
+      return 'No results available.';
+    }
+    
+    // Get the primary result
+    const primaryResult = coordinationResult.results.find(r => r.type === 'primary');
+    if (primaryResult && primaryResult.result) {
+      return primaryResult.result;
+    }
+    
+    // Fallback to first result
+    return coordinationResult.results[0].result || 'No result available.';
+  }
+
+  // Simplified method for chat interfaces - returns just the displayable result
+  async processUserMessage(userMessage, pageContext = null) {
+    try {
+      const coordinationResult = await this.coordinateTask(userMessage, pageContext);
+      return this.getDisplayableResult(coordinationResult);
+    } catch (error) {
+      console.error('Error processing user message:', error);
+      return `Sorry, I encountered an error: ${error.message}`;
+    }
   }
 
   // Coordinate and dispatch tasks to appropriate agents
@@ -611,7 +754,7 @@ Analyze this message and respond with the JSON classification:`;
       const results = [];
       
       // Handle primary intent
-      const primaryResult = await this.dispatchToAgent(intentResult.primary, intentResult.craftedPrompt, pageContext);
+      const primaryResult = await this.dispatchToAgent(intentResult.primary, intentResult.craftedPrompt, pageContext, intentResult);
       results.push({
         intent: intentResult.primary,
         type: 'primary',
@@ -623,7 +766,7 @@ Analyze this message and respond with the JSON classification:`;
         for (const secondaryIntent of intentResult.secondary) {
           if (secondaryIntent !== intentResult.primary) {
             try {
-              const secondaryResult = await this.dispatchToAgent(secondaryIntent, intentResult.craftedPrompt, pageContext);
+              const secondaryResult = await this.dispatchToAgent(secondaryIntent, intentResult.craftedPrompt, pageContext, intentResult);
               results.push({
                 intent: secondaryIntent,
                 type: 'secondary',
@@ -654,7 +797,7 @@ Analyze this message and respond with the JSON classification:`;
   }
 
   // Dispatch to specific agent based on intent
-  async dispatchToAgent(intent, craftedPrompt, pageContext = null) {
+  async dispatchToAgent(intent, craftedPrompt, pageContext = null, intentAnalysis = null) {
     console.log(`Dispatching to ${intent} agent with prompt:`, craftedPrompt);
 
     switch (intent) {
@@ -664,13 +807,28 @@ Analyze this message and respond with the JSON classification:`;
                              craftedPrompt.toLowerCase().includes('this') || 
                              craftedPrompt.toLowerCase().includes('current');
         
+        // Extract summarization preferences from intent analysis
+        const summaryOptions = {};
+        if (intentAnalysis) {
+          if (intentAnalysis.summarizationType) {
+            summaryOptions.type = intentAnalysis.summarizationType;
+            console.log(`Using detected summarization type: ${intentAnalysis.summarizationType}`);
+          }
+          if (intentAnalysis.summarizationLength) {
+            summaryOptions.length = intentAnalysis.summarizationLength;
+            console.log(`Using detected summarization length: ${intentAnalysis.summarizationLength}`);
+          }
+        }
+        
         if (isPageSummary && pageContext) {
-          return await this.summarizeCurrentPage();
+          const pageResult = await this.summarizeCurrentPage();
+          // Return formatted result with page context
+          return `**${pageResult.title}**\n\n${pageResult.summary}\n\n*Source: ${pageResult.url}*\n*Word count: ${pageResult.wordCount}*`;
         } else {
           // For text summarization, extract text from the prompt
           const textMatch = craftedPrompt.match(/"([^"]+)"|'([^']+)'|summarize\s+(.+)$/i);
           const textToSummarize = textMatch ? (textMatch[1] || textMatch[2] || textMatch[3]) : craftedPrompt;
-          return await this.summarizeText(textToSummarize);
+          return await this.summarizeText(textToSummarize, '', intentAnalysis);
         }
 
       case 'translate':
@@ -1179,7 +1337,8 @@ if (typeof module !== 'undefined' && module.exports) {
       const summarizer = await window.Summarizer.create({
         type: 'key-points',
         format: 'markdown',
-        length: 'short'
+        length: 'short',
+        outputLanguage: 'en'
       });
       console.log('✓ Summarizer created successfully');
       

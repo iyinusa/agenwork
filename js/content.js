@@ -137,6 +137,7 @@ function extractPageContent() {
         type: options.type || 'key-points',
         format: options.format || 'markdown',
         length: options.length || 'medium',
+        outputLanguage: options.outputLanguage || 'en',
         ...options
       });
       

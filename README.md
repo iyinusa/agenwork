@@ -43,7 +43,7 @@ AgenWork is a smart browsing agent browser extension that helps user with instan
    - The AgenWork extension should now be installed
 
 3. **Verify Chrome AI API Support**:
-   - Ensure you're using Chrome 128+ 
+   - Ensure you're using Chrome 138+ (stable release)
    - Check `chrome://flags/#optimization-guide-on-device-model` is enabled
    - Visit `chrome://on-device-internals` to verify AI model availability
 
@@ -74,7 +74,7 @@ AgenWork is a smart browsing agent browser extension that helps user with instan
 ## 🔧 System Requirements
 
 ### For Full AI Functionality:
-- **Chrome Version**: 128+ (Summarizer API available)
+- **Chrome Version**: 138+ (Built-in AI APIs available)
 - **Operating System**: 
   - Windows 10 or 11
   - macOS 13+ (Ventura and onwards)

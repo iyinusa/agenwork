@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AgenWork",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A smart browsing agent that helps users with instant answers, smarter suggestions, and tasks using Chrome's built-in AI APIs.",
   "permissions": [
     "storage",

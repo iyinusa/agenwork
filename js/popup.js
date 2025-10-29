@@ -233,7 +233,7 @@ function updateAIStatus(capabilities) {
 function showAIUnavailableMessage() {
   const markdownMessage = `⚠️ **Chrome AI APIs not available**
 
-The Chrome built-in AI APIs are not available in this browser or version. Please ensure you're using **Chrome 127+** with AI features enabled.
+The Chrome built-in AI APIs are not available in this browser or version. Please ensure you're using **Chrome 138+** with AI features enabled.
 
 Some functionality may be limited to basic responses.`;
 
@@ -857,13 +857,13 @@ async function handleResearchRequest(message, intent) {
 I'm having trouble accessing the AI research capabilities right now. This might be because:
 
 - Chrome's built-in AI features need to be enabled
-- Your Chrome version needs to be updated (Chrome 128+ required)
+- Your Chrome version needs to be updated (Chrome 138+ required)
 - The AI model needs to be downloaded first
 
 **Your question:** "${message}"
 
 **To enable AI research:**
-1. Update Chrome to version 128 or higher
+1. Update Chrome to version 138 or higher
 2. Enable Chrome AI flags or join the Origin Trial
 3. Try your question again
 
@@ -904,7 +904,7 @@ I'm **AgenWork**, your smart browsing assistant powered by Chrome's built-in AI.
 - **🔍 Research** and information gathering
 
 **To unlock full AI capabilities:**
-1. Update Chrome to version 128 or higher
+1. Update Chrome to version 138 or higher
 2. Enable Chrome AI flags or join the Origin Trial
 3. Allow AI model download when prompted
 

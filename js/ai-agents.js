@@ -15,11 +15,29 @@ class AIAgents {
     try {
       console.log('Initializing AI Agents...');
       
-      // Check if LanguageModel is available (like the working demo)
-      if (!('LanguageModel' in self) && !('LanguageModel' in window)) {
-        console.log('LanguageModel not available in global scope');
-      } else {
-        console.log('LanguageModel found in global scope');
+      const support = AIAgents.isSupported();
+      console.log('AI APIs support check:', support);
+      
+      if (support.summarizer) {
+        console.log('✓ Summarizer API available');
+      }
+      if (support.prompter) {
+        console.log('✓ LanguageModel API available');
+      }
+      if (support.translator) {
+        console.log('✓ Translator API available');
+      }
+      if (support.writer) {
+        console.log('✓ Writer API available');
+      }
+      
+      if (!support.summarizer && !support.prompter && !support.translator && !support.writer) {
+        console.warn('⚠️ No Chrome Built-in AI APIs detected');
+        
+        const chromeVersion = AIAgents.getChromeVersion();
+        if (!chromeVersion || chromeVersion < 138) {
+          console.warn(`Chrome version ${chromeVersion || 'Unknown'} detected. Chrome 138+ required for Built-in AI APIs.`);
+        }
       }
       
       this.initialized = true;
@@ -31,35 +49,24 @@ class AIAgents {
     }
   }
 
-  // Check if browser supports AI APIs
+  // Check if browser supports AI APIs (Updated for Chrome 138+ Built-in AI APIs)
   static isSupported() {
     const hasWindow = typeof window !== 'undefined';
-    const hasAI = hasWindow && 'ai' in window;
     
-    // Check for Summarizer API as per Chrome documentation
-    const hasSummarizer = hasWindow && ('Summarizer' in self || (hasAI && 'summarizer' in window.ai));
+    // Check for AI APIs directly as global objects according to Chrome Built-in AI documentation
+    const hasSummarizer = hasWindow && 'Summarizer' in window;
+    const hasLanguageModel = hasWindow && 'LanguageModel' in window;
+    const hasTranslator = hasWindow && 'Translator' in window;
+    const hasWriter = hasWindow && 'Writer' in window;
     
-    // More detailed checks for each AI agent type
-    const hasTranslator = hasAI && 'translator' in window.ai;
-    const hasWriter = hasAI && 'writer' in window.ai;
-    // Check for LanguageModel in global scope (correct API path)
-    const hasPrompter = hasWindow && ('LanguageModel' in self || 'LanguageModel' in window);
-    
-    console.log('AI Support Check:', {
+    console.log('AI Support Check (Chrome Built-in AI):', {
       hasWindow,
-      hasAI,
       hasSummarizer,
+      hasLanguageModel,
       hasTranslator,
       hasWriter,
-      hasPrompter,
-      summarizerInSelf: hasWindow && 'Summarizer' in self,
-      windowAISummarizer: hasAI && 'summarizer' in window.ai,
-      windowAITranslator: hasAI && 'translator' in window.ai,
-      windowAIWriter: hasAI && 'writer' in window.ai,
-      languageModelInSelf: hasWindow && 'LanguageModel' in self,
-      languageModelInWindow: hasWindow && 'LanguageModel' in window,
-      globalSummarizer: hasWindow && typeof window.Summarizer !== 'undefined',
-      globalLanguageModel: hasWindow && typeof window.LanguageModel !== 'undefined',
+      summarizerType: hasWindow && window.Summarizer ? typeof window.Summarizer : 'not found',
+      languageModelType: hasWindow && window.LanguageModel ? typeof window.LanguageModel : 'not found',
       userAgent: hasWindow ? navigator.userAgent : 'N/A',
       chromeVersion: hasWindow ? this.getChromeVersion() : 'N/A'
     });
@@ -68,23 +75,60 @@ class AIAgents {
       summarizer: hasSummarizer,
       translator: hasTranslator,
       writer: hasWriter,
-      prompter: hasPrompter,
-      windowAI: hasAI,
+      prompter: hasLanguageModel, // Prompt API uses LanguageModel
       hasWindow: hasWindow
     };
   }
 
-  // Get Chrome version for debugging
+  // Get Chrome version for debugging (Enhanced for better detection)
   static getChromeVersion() {
     if (typeof navigator === 'undefined') return null;
     const match = navigator.userAgent.match(/Chrome\/(\d+)/);
-    return match ? parseInt(match[1]) : null;
+    if (!match) return null;
+    
+    const version = parseInt(match[1]);
+    console.log(`Detected Chrome version: ${version}`);
+    return version;
   }
 
-  // Summarizer Agent Implementation
+  // Check if the current Chrome version supports Built-in AI APIs
+  static isChromeVersionSupported() {
+    const version = this.getChromeVersion();
+    return version && version >= 138;
+  }
+
+  // Generate helpful error messages based on Chrome version and API availability
+  static generateHelpfulErrorMessage(apiName, error) {
+    const chromeVersion = this.getChromeVersion();
+    const isVersionSupported = this.isChromeVersionSupported();
+    
+    let message = `## ${apiName} API Error\n\n`;
+    
+    if (!chromeVersion) {
+      message += "❌ **Not using Chrome**: This extension requires Google Chrome with built-in AI APIs.\n\n";
+      message += "**Solution**: Please use Google Chrome browser.\n\n";
+    } else if (!isVersionSupported) {
+      message += `❌ **Chrome version too old**: Current version ${chromeVersion}, required 138+\n\n`;
+      message += "**Solution**: Update Chrome to the latest version.\n\n";
+    } else {
+      message += `✅ **Chrome version**: ${chromeVersion} (supported)\n\n`;
+      message += "❌ **API not available**: The AI APIs may not be enabled.\n\n";
+      message += "**Solutions**:\n";
+      message += "1. Enable Chrome AI flags at `chrome://flags/`\n";
+      message += "2. Check `chrome://on-device-internals` for model status\n";
+      message += "3. Ensure sufficient storage (22GB+ free space)\n";
+      message += "4. Ensure sufficient RAM (16GB+)\n\n";
+    }
+    
+    message += `**Technical Error**: ${error.message}\n\n`;
+    message += "**Need Help?** Check the extension's README for detailed setup instructions.";
+    
+    return message;
+  }
+
+  // Summarizer Agent Implementation (Chrome Built-in AI - Updated for Chrome 138+)
   async createSummarizer(options = {}) {
     try {
-      // Enhanced availability check with detailed logging
       console.log('Checking Summarizer API availability...');
       
       const support = AIAgents.isSupported();
@@ -94,37 +138,24 @@ class AIAgents {
         throw new Error('Window object not available - running outside browser context');
       }
       
-      if (!support.windowAI) {
-        const chromeVersion = AIAgents.getChromeVersion();
-        throw new Error(`Chrome Built-in AI API not available. Current Chrome version: ${chromeVersion || 'Unknown'}. Required: Chrome 128+ with AI features enabled.`);
-      }
-      
       if (!support.summarizer) {
-        throw new Error('Summarizer API is not available in this browser. Please ensure you have Chrome 128+ and the Built-in AI APIs are enabled.');
+        throw new Error('Summarizer API is not available in this browser. Please ensure you have Chrome 138+ and the Built-in AI APIs are enabled.');
       }
 
-      // Check availability using the correct API pattern
-      let availability;
-      if ('Summarizer' in self) {
-        availability = await self.Summarizer.availability();
-      } else if (typeof window.Summarizer !== 'undefined') {
-        availability = await window.Summarizer.availability();
-      } else if (window.ai && window.ai.summarizer) {
-        availability = await window.ai.summarizer.availability();
-      } else {
-        throw new Error('Summarizer API not found in expected locations');
-      }
+      // Check availability using the correct Chrome Built-in AI pattern
+      console.log('Checking Summarizer availability...');
+      const availability = await window.Summarizer.availability();
       console.log('Summarizer availability:', availability);
 
-      if (availability.available === 'no') {
-        throw new Error('Summarizer API is not available on this device. Please check system requirements (Chrome 128+, 16GB RAM, 22GB storage). You may also need to enable Chrome flags or join the Origin Trial.');
+      if (availability === 'no') {
+        throw new Error('Summarizer API is not available on this device. Please check system requirements (Chrome 138+, 16GB RAM, 22GB storage). You may also need to enable Chrome flags.');
       }
 
-      if (availability.available === 'after-download') {
+      if (availability === 'after-download') {
         console.log('Summarizer model needs to be downloaded first');
       }
 
-      // Default options for summarizer
+      // Default options for summarizer according to Chrome documentation
       const defaultOptions = {
         type: 'key-points', // 'key-points', 'tldr', 'teaser', 'headline'
         format: 'markdown', // 'markdown', 'plain-text'
@@ -141,23 +172,16 @@ class AIAgents {
 
       const finalOptions = { ...defaultOptions, ...options };
 
-      // Check for user activation requirement
+      // Check for user activation requirement (required for model downloads)
       if (!navigator.userActivation || !navigator.userActivation.isActive) {
-        console.warn('User activation required for Summarizer API');
+        console.warn('User activation may be required for Summarizer API');
+        // Don't throw error, just warn - the API may work if model is already downloaded
       }
 
       console.log('Creating summarizer with options:', finalOptions);
       
-      // Create summarizer using the correct API pattern
-      if ('Summarizer' in self) {
-        this.summarizer = await self.Summarizer.create(finalOptions);
-      } else if (typeof window.Summarizer !== 'undefined') {
-        this.summarizer = await window.Summarizer.create(finalOptions);
-      } else if (window.ai && window.ai.summarizer) {
-        this.summarizer = await window.ai.summarizer.create(finalOptions);
-      } else {
-        throw new Error('Summarizer API not available for creation');
-      }
+      // Create summarizer using Chrome Built-in AI pattern
+      this.summarizer = await window.Summarizer.create(finalOptions);
       
       console.log('Summarizer created successfully');
       return this.summarizer;
@@ -307,10 +331,10 @@ class AIAgents {
       .trim();
   }
 
-  // Prompter Agent Implementation (Coordinator Agent using Chrome Prompt AI)
+  // Prompter Agent Implementation (Chrome Built-in AI Prompt API - Updated for Chrome 138+)
   async createPrompter(options = {}) {
     try {
-      console.log('Checking Prompt API (LanguageModel) availability...');
+      console.log('Checking Language Model API availability...');
       
       const support = AIAgents.isSupported();
       console.log('Browser support check:', support);
@@ -319,50 +343,34 @@ class AIAgents {
         throw new Error('Window object not available - running outside browser context');
       }
       
-      if (!support.windowAI) {
-        const chromeVersion = AIAgents.getChromeVersion();
-        throw new Error(`Chrome Built-in AI API not available. Current Chrome version: ${chromeVersion || 'Unknown'}. Required: Chrome 128+ with AI features enabled.`);
-      }
-      
       if (!support.prompter) {
-        throw new Error('Prompt API (LanguageModel) is not available in this browser. Please ensure you have Chrome 128+ and the Built-in AI APIs are enabled.');
+        throw new Error('Language Model API is not available in this browser. Please ensure you have Chrome 138+ and the Built-in AI APIs are enabled.');
       }
 
-      // Check availability using the correct API pattern
-      let availability;
-      if ('LanguageModel' in self) {
-        availability = await self.LanguageModel.availability();
-      } else if ('LanguageModel' in window) {
-        availability = await window.LanguageModel.availability();
-      } else {
-        throw new Error('LanguageModel API not found. Make sure Chrome Built-in AI is enabled.');
-      }
-      
-      console.log('LanguageModel availability:', availability);
+      // Check availability using the correct Chrome Built-in AI pattern
+      console.log('Checking Language Model availability...');
+      const availability = await window.LanguageModel.availability();
+      console.log('Language Model availability:', availability);
 
       if (availability === 'no') {
-        throw new Error('LanguageModel API is not available on this device. Please check system requirements (Chrome 128+, 16GB RAM, 22GB storage, 4GB+ VRAM or 4+ CPU cores). You may also need to enable Chrome flags or join the Origin Trial.');
+        throw new Error('Language Model API is not available on this device. Please check system requirements (Chrome 138+, 16GB RAM, 22GB storage, 4GB+ VRAM or 4+ CPU cores). You may also need to enable Chrome flags.');
       }
 
       if (availability === 'after-download') {
         console.log('Gemini Nano model needs to be downloaded first');
       }
 
-      // Get model parameters like the working demo
+      // Get model parameters according to Chrome documentation
       let modelParams;
       try {
-        if ('LanguageModel' in self) {
-          modelParams = await self.LanguageModel.params();
-        } else if ('LanguageModel' in window) {
-          modelParams = await window.LanguageModel.params();
-        }
-        console.log('LanguageModel params:', modelParams);
+        modelParams = await window.LanguageModel.params();
+        console.log('Language Model params:', modelParams);
       } catch (error) {
-        console.warn('Could not get LanguageModel params, using defaults:', error);
+        console.warn('Could not get Language Model params, using defaults:', error);
         modelParams = {defaultTopK: 3, maxTopK: 128, defaultTemperature: 1, maxTemperature: 2};
       }
 
-      // Default options for prompter (based on working demo)
+      // Default options for language model according to Chrome documentation
       const defaultOptions = {
         temperature: modelParams?.defaultTemperature || 0.8, // Use model defaults
         topK: modelParams?.defaultTopK || 3,
@@ -377,23 +385,18 @@ class AIAgents {
 
       const finalOptions = { ...defaultOptions, ...options };
 
-      // Check for user activation requirement
+      // Check for user activation requirement (required for model downloads)
       if (!navigator.userActivation || !navigator.userActivation.isActive) {
-        console.warn('User activation required for LanguageModel API');
+        console.warn('User activation may be required for Language Model API');
+        // Don't throw error, just warn - the API may work if model is already downloaded
       }
 
-      console.log('Creating LanguageModel session with options:', finalOptions);
+      console.log('Creating Language Model session with options:', finalOptions);
       
-      // Create language model session using the correct API pattern
-      if ('LanguageModel' in self) {
-        this.prompter = await self.LanguageModel.create(finalOptions);
-      } else if ('LanguageModel' in window) {
-        this.prompter = await window.LanguageModel.create(finalOptions);
-      } else {
-        throw new Error('LanguageModel API not available for creation');
-      }
+      // Create language model session using Chrome Built-in AI pattern
+      this.prompter = await window.LanguageModel.create(finalOptions);
       
-      console.log('Prompter (LanguageModel) created successfully');
+      console.log('Language Model session created successfully');
       return this.prompter;
 
     } catch (error) {
@@ -751,7 +754,7 @@ Please provide a comprehensive response:`;
     }
   }
 
-  // Comprehensive diagnostic function
+  // Comprehensive diagnostic function (Updated for Chrome 138+ Built-in AI)
   async getDiagnostics() {
     const chromeVersion = AIAgents.getChromeVersion();
     const support = AIAgents.isSupported();
@@ -760,7 +763,7 @@ Please provide a comprehensive response:`;
       system: {
         userAgent: navigator.userAgent,
         chromeVersion: chromeVersion,
-        chromeVersionValid: chromeVersion >= 128,
+        chromeVersionValid: chromeVersion >= 138,
         platform: navigator.platform,
         memory: navigator.deviceMemory || 'Unknown'
       },
@@ -768,15 +771,15 @@ Please provide a comprehensive response:`;
       aiAPIs: {
         windowAI: 'ai' in window,
         summarizer: support.windowAI && 'summarizer' in window.ai,
+        languageModel: support.windowAI && 'languageModel' in window.ai,
         translator: support.windowAI && 'translator' in window.ai,
-        writer: support.windowAI && 'writer' in window.ai,
-        languageModel: support.windowAI && 'languageModel' in window.ai
+        writer: support.windowAI && 'writer' in window.ai
       },
       availability: {},
       recommendations: []
     };
 
-    // Check specific API availability
+    // Check specific API availability using Chrome Built-in AI pattern
     if (support.windowAI) {
       try {
         if (support.summarizer) {
@@ -786,11 +789,20 @@ Please provide a comprehensive response:`;
       } catch (error) {
         diagnostics.availability.summarizerError = error.message;
       }
+
+      try {
+        if (support.prompter) {
+          const languageModelCaps = await window.ai.languageModel.capabilities();
+          diagnostics.availability.languageModel = languageModelCaps;
+        }
+      } catch (error) {
+        diagnostics.availability.languageModelError = error.message;
+      }
     }
 
     // Generate recommendations
-    if (chromeVersion < 128) {
-      diagnostics.recommendations.push('Update Chrome to version 128 or higher');
+    if (chromeVersion < 138) {
+      diagnostics.recommendations.push('Update Chrome to version 138 or higher');
     }
     
     if (!support.windowAI) {
@@ -799,6 +811,10 @@ Please provide a comprehensive response:`;
     
     if (!support.summarizer && support.windowAI) {
       diagnostics.recommendations.push('The Summarizer API may not be available in your region or Chrome build');
+    }
+
+    if (!support.prompter && support.windowAI) {
+      diagnostics.recommendations.push('The Language Model API may not be available in your region or Chrome build');
     }
 
     return diagnostics;
@@ -830,53 +846,142 @@ Please provide a comprehensive response:`;
       }
     };
 
-    // Check availability for each supported agent
+    // Check availability for each supported agent using correct API patterns
     try {
       if (support.summarizer) {
-        const summarizerCaps = await window.ai.summarizer.capabilities();
-        console.log('Summarizer capabilities:', summarizerCaps);
-        capabilities.summarizer.available = summarizerCaps.available === 'readily' || summarizerCaps.available === 'after-download';
+        const summarizerAvailability = await window.Summarizer.availability();
+        console.log('Summarizer availability:', summarizerAvailability);
+        capabilities.summarizer.available = summarizerAvailability === 'readily' || summarizerAvailability === 'after-download';
       }
     } catch (error) {
-      console.warn('Error checking summarizer capabilities:', error);
+      console.warn('Error checking summarizer availability:', error);
     }
 
     try {
       if (support.translator) {
-        const translatorAvailability = await window.ai.translator.availability();
+        const translatorAvailability = await window.Translator.availability();
         console.log('Translator availability:', translatorAvailability);
         capabilities.translator.available = translatorAvailability === 'readily' || translatorAvailability === 'after-download';
       }
     } catch (error) {
-      console.warn('Error checking translator capabilities:', error);
+      console.warn('Error checking translator availability:', error);
     }
 
     try {
       if (support.writer) {
-        const writerAvailability = await window.ai.writer.availability();
+        const writerAvailability = await window.Writer.availability();
         console.log('Writer availability:', writerAvailability);
         capabilities.writer.available = writerAvailability === 'readily' || writerAvailability === 'after-download';
       }
     } catch (error) {
-      console.warn('Error checking writer capabilities:', error);
+      console.warn('Error checking writer availability:', error);
     }
 
     try {
       if (support.prompter) {
-        let availability;
-        if ('LanguageModel' in self) {
-          availability = await self.LanguageModel.availability();
-        } else if ('LanguageModel' in window) {
-          availability = await window.LanguageModel.availability();
-        }
-        console.log('Prompter availability:', availability);
+        const availability = await window.LanguageModel.availability();
+        console.log('LanguageModel availability:', availability);
         capabilities.prompter.available = availability === 'readily' || availability === 'after-download';
       }
     } catch (error) {
-      console.warn('Error checking prompter capabilities:', error);
+      console.warn('Error checking LanguageModel availability:', error);
     }
 
     return capabilities;
+  }
+
+  // Check if the current context supports AI APIs
+  static async checkEnvironment() {
+    const results = {
+      chromeVersion: AIAgents.getChromeVersion(),
+      isChromeVersionSupported: AIAgents.isChromeVersionSupported(),
+      userActivation: navigator.userActivation ? navigator.userActivation.isActive : false,
+      apis: {},
+      recommendations: []
+    };
+
+    // Check each API
+    const support = AIAgents.isSupported();
+    
+    if (support.summarizer) {
+      try {
+        const availability = await window.Summarizer.availability();
+        results.apis.summarizer = { 
+          supported: true, 
+          availability,
+          ready: availability === 'readily'
+        };
+      } catch (error) {
+        results.apis.summarizer = { 
+          supported: false, 
+          error: error.message 
+        };
+      }
+    } else {
+      results.apis.summarizer = { supported: false };
+    }
+
+    if (support.prompter) {
+      try {
+        const availability = await window.LanguageModel.availability();
+        results.apis.languageModel = { 
+          supported: true, 
+          availability,
+          ready: availability === 'readily'
+        };
+      } catch (error) {
+        results.apis.languageModel = { 
+          supported: false, 
+          error: error.message 
+        };
+      }
+    } else {
+      results.apis.languageModel = { supported: false };
+    }
+
+    // Generate recommendations
+    if (!results.isChromeVersionSupported) {
+      results.recommendations.push('Update Chrome to version 138 or later');
+    }
+    
+    if (!results.userActivation) {
+      results.recommendations.push('User interaction required - try clicking a button first');
+    }
+
+    const availableAPIs = Object.values(results.apis).filter(api => api.supported && api.ready).length;
+    const supportedAPIs = Object.values(results.apis).filter(api => api.supported).length;
+    
+    if (availableAPIs === 0 && supportedAPIs > 0) {
+      results.recommendations.push('AI models may need to be downloaded - this requires user interaction');
+      results.recommendations.push('Check chrome://on-device-internals for model status');
+    }
+
+    return results;
+  }
+
+  // Notify UI of AI model download progress
+  notifyProgress(agentType, progress) {
+    console.log(`${agentType} download progress: ${progress.toFixed(1)}%`);
+    
+    // Send progress to background script if available
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'AI_PROGRESS',
+          agentType: agentType,
+          progress: progress
+        });
+      } catch (error) {
+        console.warn('Could not send progress to background script:', error);
+      }
+    }
+    
+    // Dispatch custom event for local listeners
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ai-progress', {
+        detail: { agentType, progress }
+      }));
+    }
   }
 
   // Debug method to check all AI capabilities
@@ -889,56 +994,50 @@ Please provide a comprehensive response:`;
     const capabilities = await this.getCapabilities();
     console.log('Capabilities Check Results:', capabilities);
     
-    // Test each API individually
-    if (support.windowAI) {
-      console.log('window.ai object:', window.ai);
-      
-      if (window.ai.summarizer) {
-        console.log('Summarizer API found');
-        try {
-          const summarizerCaps = await window.ai.summarizer.capabilities();
-          console.log('Summarizer capabilities:', summarizerCaps);
-        } catch (e) {
-          console.error('Summarizer capabilities error:', e);
-        }
+    // Test each API individually using correct global object patterns
+    if (support.summarizer) {
+      console.log('Summarizer API found as global object');
+      try {
+        const summarizerAvail = await window.Summarizer.availability();
+        console.log('Summarizer availability:', summarizerAvail);
+      } catch (e) {
+        console.error('Summarizer availability error:', e);
       }
-      
-      if (window.ai.translator) {
-        console.log('Translator API found');
-        try {
-          const translatorAvail = await window.ai.translator.availability();
-          console.log('Translator availability:', translatorAvail);
-        } catch (e) {
-          console.error('Translator availability error:', e);
-        }
+    }
+    
+    if (support.translator) {
+      console.log('Translator API found as global object');
+      try {
+        const translatorAvail = await window.Translator.availability();
+        console.log('Translator availability:', translatorAvail);
+      } catch (e) {
+        console.error('Translator availability error:', e);
       }
-      
-      if (window.ai.writer) {
-        console.log('Writer API found');
-        try {
-          const writerAvail = await window.ai.writer.availability();
-          console.log('Writer availability:', writerAvail);
-        } catch (e) {
-          console.error('Writer availability error:', e);
-        }
+    }
+    
+    if (support.writer) {
+      console.log('Writer API found as global object');
+      try {
+        const writerAvail = await window.Writer.availability();
+        console.log('Writer availability:', writerAvail);
+      } catch (e) {
+        console.error('Writer availability error:', e);
       }
-      
-      if ('LanguageModel' in self || 'LanguageModel' in window) {
-        console.log('LanguageModel API found');
-        try {
-          let prompterAvail;
-          if ('LanguageModel' in self) {
-            prompterAvail = await self.LanguageModel.availability();
-          } else {
-            prompterAvail = await window.LanguageModel.availability();
-          }
-          console.log('LanguageModel availability:', prompterAvail);
-        } catch (e) {
-          console.error('LanguageModel availability error:', e);
-        }
+    }
+    
+    if (support.prompter) {
+      console.log('LanguageModel API found as global object');
+      try {
+        const prompterAvail = await window.LanguageModel.availability();
+        console.log('LanguageModel availability:', prompterAvail);
+      } catch (e) {
+        console.error('LanguageModel availability error:', e);
       }
-    } else {
-      console.log('window.ai not available');
+    }
+    
+    if (!support.summarizer && !support.translator && !support.writer && !support.prompter) {
+      console.log('No AI APIs available as global objects');
+      console.log('Available global objects:', Object.getOwnPropertyNames(window).filter(name => name.includes('AI') || name.includes('Model') || name.includes('Summarizer') || name.includes('Translator') || name.includes('Writer')));
     }
     
     console.log('=== End Debug ===');
@@ -1042,7 +1141,7 @@ if (typeof module !== 'undefined' && module.exports) {
 } else {
   window.AIAgents = AIAgents;
   
-  // Add global debug function
+  // Add global debug functions
   window.debugAI = async function() {
     console.log('=== Global AI Debug ===');
     if (window.aiAgents) {
@@ -1052,6 +1151,57 @@ if (typeof module !== 'undefined' && module.exports) {
       const tempAgents = new AIAgents();
       await tempAgents.initialize();
       return await tempAgents.debugCapabilities();
+    }
+  };
+
+  // Quick environment check
+  window.checkAIEnvironment = async function() {
+    console.log('=== AI Environment Check ===');
+    const results = await AIAgents.checkEnvironment();
+    console.log('Results:', results);
+    
+    if (results.recommendations.length > 0) {
+      console.log('Recommendations:');
+      results.recommendations.forEach((rec, i) => {
+        console.log(`${i + 1}. ${rec}`);
+      });
+    }
+    
+    return results;
+  };
+
+  // Test API creation directly
+  window.testAICreation = async function() {
+    console.log('=== Testing AI API Creation ===');
+    
+    try {
+      console.log('Testing Summarizer creation...');
+      const summarizer = await window.Summarizer.create({
+        type: 'key-points',
+        format: 'markdown',
+        length: 'short'
+      });
+      console.log('✓ Summarizer created successfully');
+      
+      // Test summarization
+      const testSummary = await summarizer.summarize('This is a test text for summarization. It contains multiple sentences to test the API functionality.');
+      console.log('✓ Summarization test:', testSummary);
+      
+    } catch (error) {
+      console.error('✗ Summarizer creation failed:', error);
+    }
+
+    try {
+      console.log('Testing LanguageModel creation...');
+      const model = await window.LanguageModel.create();
+      console.log('✓ LanguageModel created successfully');
+      
+      // Test prompting
+      const testResponse = await model.prompt('Say hello!');
+      console.log('✓ Prompting test:', testResponse);
+      
+    } catch (error) {
+      console.error('✗ LanguageModel creation failed:', error);
     }
   };
 }

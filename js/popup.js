@@ -85,7 +85,7 @@ let aiAgents = null;
 
 // Initialize popup
 function initializePopup() {
-  console.log('AgenWork popup initialized');
+  console.log('🚀 AgenWork popup initialized with multi-agent system');
   
   // Set theme based on system preference
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -116,6 +116,68 @@ function initializePopup() {
   
   // Update version display
   updateVersionFromManifest();
+
+  // Add console debugging helpers for multi-agent system
+  if (typeof window !== 'undefined') {
+    window.testMultiAgent = async function(message = 'test the multi-agent system') {
+      console.log('🧪 Testing multi-agent coordination system...');
+      if (window.aiAgents && typeof window.aiAgents.testMultiAgentSystem === 'function') {
+        return await window.aiAgents.testMultiAgentSystem();
+      } else if (window.aiAgents && typeof window.aiAgents.coordinateTask === 'function') {
+        console.log('Running quick coordination test...');
+        return await window.aiAgents.coordinateTask(message);
+      } else {
+        console.error('❌ AI Agents not available for testing');
+        return null;
+      }
+    };
+
+    window.debugAIAgents = function() {
+      console.log('🔍 Multi-Agent System Debug Information:');
+      console.log('  • Global aiAgents instance:', !!window.aiAgents);
+      console.log('  • AIAgents class available:', !!window.AIAgents);
+      
+      if (window.aiAgents) {
+        console.log('  • Initialized:', window.aiAgents.initialized);
+        console.log('  • Preferred language:', window.aiAgents.preferredLanguage);
+        console.log('  • Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.aiAgents)).filter(name => name !== 'constructor'));
+      }
+      
+      return {
+        aiAgents: !!window.aiAgents,
+        AIAgents: !!window.AIAgents,
+        initialized: window.aiAgents?.initialized,
+        preferredLanguage: window.aiAgents?.preferredLanguage
+      };
+    };
+
+    // Add summarizer-specific debugging
+    window.testSummarizer = async function() {
+      console.log('� Testing Summarizer Agent specifically...');
+      if (window.aiAgents && window.aiAgents.summarizer && typeof window.aiAgents.summarizer.testSummarizer === 'function') {
+        return await window.aiAgents.summarizer.testSummarizer();
+      } else {
+        console.error('❌ Summarizer agent not available for testing');
+        return null;
+      }
+    };
+
+    window.diagnoseSummarizer = async function() {
+      console.log('🩺 Running Summarizer diagnostics...');
+      if (window.aiAgents && window.aiAgents.summarizer && typeof window.aiAgents.summarizer.diagnose === 'function') {
+        return await window.aiAgents.summarizer.diagnose();
+      } else {
+        console.error('❌ Summarizer agent not available for diagnostics');
+        return null;
+      }
+    };
+
+    console.log('�💡 Multi-Agent Debug helpers available:');
+    console.log('  • testMultiAgent() - Test the multi-agent coordination system');
+    console.log('  • debugAIAgents() - Show multi-agent system debug info');
+    console.log('  • testSummarizer() - Test the summarizer agent specifically');
+    console.log('  • diagnoseSummarizer() - Run detailed summarizer diagnostics');
+  }
 }
 
 // Update version display from manifest
@@ -491,7 +553,8 @@ async function sendMessage() {
 
 // Process message with appropriate AI agent
 async function processMessage(message) {
-  updateStatus('Processing message...', 'processing');
+  console.log('🚀 Starting message processing:', message);
+  updateStatus('Initializing AI agents...', 'processing');
   
   // Check for special demo commands
   if (message.toLowerCase().includes('markdown demo') || message.toLowerCase().includes('show demo')) {
@@ -499,12 +562,19 @@ async function processMessage(message) {
     showMarkdownDemo();
     return {
       response: null, // Already added to chat
-      agentType: 'prompter'
+      agentType: 'demo'
     };
   }
   
+  // Validate aiAgents instance
+  if (!aiAgents) {
+    console.error('❌ AI Agents not initialized');
+    updateStatus('AI Unavailable', 'error');
+    throw new Error('AI system is not initialized. Please refresh the page and try again.');
+  }
+
   // Get current page context for better AI intent detection
-  updateStatus('Analyzing your request...', 'processing');
+  updateStatus('Gathering page context...', 'processing');
   let pageContext = null;
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -514,40 +584,82 @@ async function processMessage(message) {
         url: tab.url,
         contentPreview: null // We'll add content preview later if needed
       };
+      console.log('📄 Page context gathered:', pageContext);
+    } else {
+      console.log('📄 No valid page context available');
     }
   } catch (error) {
-    console.log('Could not get page context:', error);
+    console.log('⚠️ Could not get page context:', error);
   }
   
-  // Use AI-powered Prompter agent for coordination
-  updateStatus('Processing with AI...', 'processing');
+  // Use Multi-Agent Coordination System
+  updateStatus('Starting multi-agent coordination...', 'processing');
   let coordinationResult;
   
   try {
+    console.log('🎯 Initiating multi-agent coordination...');
     coordinationResult = await aiAgents.coordinateTask(message, pageContext);
+    console.log('✅ Multi-agent coordination completed:', coordinationResult);
     
-    // Handle the coordination result
+    // Process the coordination result
     let finalResponse = '';
     const intentInfo = coordinationResult.intentAnalysis;
+    const stats = coordinationResult.processingStats;
     
-    // Add intent analysis info to response if AI-powered
+    // Add multi-agent processing info to response
     if (intentInfo.aiPowered) {
-      finalResponse += `*🤖 AI Analysis: ${intentInfo.reasoning} (${(intentInfo.confidence * 100).toFixed(0)}% confidence)*\n\n`;
+      finalResponse += `*🤖 Multi-Agent Analysis: ${intentInfo.reasoning} (${(intentInfo.confidence * 100).toFixed(0)}% confidence)*\n`;
+      finalResponse += `*🎯 Agents deployed: ${stats.totalAgents} | Successful: ${stats.successfulAgents} | Failed: ${stats.failedAgents}*\n\n`;
+    } else {
+      finalResponse += `*📋 Pattern-based analysis: ${intentInfo.reasoning}*\n`;
+      finalResponse += `*🎯 Agents deployed: ${stats.totalAgents}*\n\n`;
     }
     
-    // Process all results
+    // Process all results from the multi-agent system
+    let primaryResponseAdded = false;
+    
     for (const result of coordinationResult.results) {
       if (result.type === 'primary') {
-        finalResponse += result.result;
+        if (result.success) {
+          finalResponse += `**${result.intent.toUpperCase()} Agent Result:**\n${result.result}`;
+          primaryResponseAdded = true;
+        } else {
+          finalResponse += `**${result.intent.toUpperCase()} Agent Error:**\n${result.result}`;
+          console.error(`Primary agent (${result.intent}) failed:`, result.error);
+        }
       } else if (result.type === 'secondary') {
-        finalResponse += `\n\n---\n**Additional ${result.intent} result:**\n${result.result}`;
+        finalResponse += `\n\n---\n**Additional ${result.intent.toUpperCase()} Agent Result:**\n`;
+        if (result.success) {
+          finalResponse += result.result;
+        } else {
+          finalResponse += `Error: ${result.result}`;
+          console.error(`Secondary agent (${result.intent}) failed:`, result.error);
+        }
       }
     }
     
-    updateStatus('Ready', 'success');
+    // Ensure we have some response
+    if (!primaryResponseAdded) {
+      finalResponse += '\n\n*No agents were able to successfully process your request. Please try rephrasing your message.*';
+    }
+    
+    // Update status based on results
+    if (stats.successfulAgents > 0) {
+      if (stats.failedAgents > 0) {
+        updateStatus(`Partially completed (${stats.successfulAgents}/${stats.totalAgents} agents)`, 'warning');
+      } else {
+        updateStatus('Multi-agent processing completed', 'success');
+      }
+    } else {
+      updateStatus('All agents failed', 'error');
+    }
+    
     return {
       response: finalResponse,
-      agentType: intentInfo.primary === 'research' ? 'prompter' : intentInfo.primary,
+      agentType: intentInfo.primary || 'unknown',
+      coordinationResult: coordinationResult,
+      multiAgent: true,
+      stats: stats,
       intentAnalysis: intentInfo
     };
     
@@ -946,6 +1058,10 @@ function handleQuickAction(action) {
     case 'write':
       messageInput.value = 'Help me write ';
       break;
+      
+    case 'research':
+      messageInput.value = 'Research and explain ';
+      break;
   }
   
   messageInput.focus();
@@ -1117,8 +1233,23 @@ async function loadSettings() {
         'isFloatingIconEnabled',
         'theme',
         'aiSettings'
-      ], (result) => {
-        updateUIWithSettings(result);
+      ], async (result) => {
+        // Also get aiLanguage from sync storage
+        chrome.storage.sync.get(['aiLanguage'], (syncResult) => {
+          const supportedLanguages = ['en', 'es', 'ja'];
+          const language = syncResult.aiLanguage && supportedLanguages.includes(syncResult.aiLanguage) 
+            ? syncResult.aiLanguage 
+            : 'en';
+          
+          // Include language in aiSettings
+          if (result.aiSettings) {
+            result.aiSettings.language = language;
+          } else {
+            result.aiSettings = { language };
+          }
+          
+          updateUIWithSettings(result);
+        });
       });
       return;
     }
@@ -1127,6 +1258,17 @@ async function loadSettings() {
     const settings = await agenWorkDB.getAllSettings();
     
     // Convert database settings format to UI format
+    // Ensure AI language is valid (only supported languages)
+    const supportedLanguages = ['en', 'es', 'ja'];
+    const dbLanguage = settings.aiLanguage ?? 'en';
+    const validLanguage = supportedLanguages.includes(dbLanguage) ? dbLanguage : 'en';
+    
+    if (dbLanguage !== validLanguage) {
+      console.warn(`Invalid AI language '${dbLanguage}' found in database. Using '${validLanguage}' instead.`);
+      // Save the corrected language back to the database
+      await agenWorkDB.setSetting('aiLanguage', validLanguage);
+    }
+    
     const uiSettings = {
       isFloatingIconEnabled: settings.floatingEnabled ?? false,
       theme: settings.theme ?? 'auto',
@@ -1134,7 +1276,8 @@ async function loadSettings() {
         summarizer: settings.summarizerEnabled ?? true,
         translator: settings.translatorEnabled ?? true,
         writer: settings.writerEnabled ?? true,
-        prompter: settings.prompterEnabled ?? true
+        prompter: settings.prompterEnabled ?? true,
+        language: validLanguage // CRITICAL FIX: Include language in aiSettings
       }
     };
     
@@ -1250,6 +1393,15 @@ async function handleThemeChange(e) {
 // Handle AI language change
 async function handleLanguageChange(e) {
   const language = e.target.value;
+  
+  // Validate language is supported
+  const supportedLanguages = ['en', 'es', 'ja'];
+  if (!supportedLanguages.includes(language)) {
+    console.error(`Unsupported language selected: ${language}`);
+    showNotification('Unsupported language selected', 'error');
+    return;
+  }
+  
   console.log(`AI language changed to: ${language}`);
   
   // Update AI agents with new language preference
@@ -1259,11 +1411,19 @@ async function handleLanguageChange(e) {
       showNotification(`AI language set to ${language === 'en' ? 'English' : language === 'es' ? 'Spanish' : 'Japanese'}`, 'success');
     } else {
       showNotification('Failed to set AI language', 'error');
+      return;
     }
   }
   
   // Save language setting to database
   await saveSettingToDB('aiLanguage', language);
+  
+  // Also save to Chrome sync storage for AIUtils
+  try {
+    await chrome.storage.sync.set({ aiLanguage: language });
+  } catch (error) {
+    console.warn('Failed to save language to Chrome sync storage:', error);
+  }
   
   // Also save all settings
   await saveSettings();

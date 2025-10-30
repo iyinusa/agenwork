@@ -17,7 +17,17 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["js/ai-agents.js", "js/content.js"],
+      "js": [
+        "js/ai-agents/utils.js",
+        "js/ai-agents/chrome-integration.js",
+        "js/ai-agents/summarizer.js",
+        "js/ai-agents/translator.js",
+        "js/ai-agents/prompter.js",
+        "js/ai-agents/writer.js",
+        "js/ai-agents/core.js",
+        "js/ai-agents/index.js",
+        "js/content.js"
+      ],
       "css": ["css/content.css"]
     }
   ],
@@ -43,6 +53,7 @@
         "css/*",
         "js/floating-icon.js",
         "js/ai-agents.js",
+        "js/ai-agents/*",
         "popup.html",
         "js/popup.js",
         "js/dexie.min.js",

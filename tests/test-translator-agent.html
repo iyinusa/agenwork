@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translator Agent Test - AgenWork (Modular System)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 Translator Agent Test Suite</h1>
+        <p>This page tests the Chrome Built-in AI Translation API implementation in AgenWork's modular system.</p>
+        <p style="color: #666; font-size: 14px;">Updated for the new modular AI Agents architecture with separate agent modules.</p>
+        
+        <!-- System Check -->
+        <div class="test-section">
+            <h3>📋 System Requirements Check</h3>
+            <button onclick="checkSystemRequirements()">Check System</button>
+            <div id="systemCheck" class="result"></div>
+        </div>
+
+        <!-- API Availability Test -->
+        <div class="test-section">
+            <h3>🔍 API Availability Test</h3>
+            <button onclick="testAPIAvailability()">Test API Availability</button>
+            <div id="apiAvailability" class="result"></div>
+        </div>
+
+        <!-- Language Detection Test -->
+        <div class="test-section">
+            <h3>🔤 Language Detection Test</h3>
+            <div class="input-group">
+                <label for="detectionText">Text to detect language:</label>
+                <textarea id="detectionText" placeholder="Enter text in any language for detection...">Bonjour! Comment allez-vous? J'espère que vous passez une excellente journée.</textarea>
+            </div>
+            <button onclick="testLanguageDetection()">Detect Language</button>
+            <div class="progress" id="detectionProgress"><div class="progress-bar"></div></div>
+            <div id="detectionResult" class="result"></div>
+        </div>
+
+        <!-- Text Translation Test -->
+        <div class="test-section">
+            <h3>🔄 Text Translation Test</h3>
+            <div class="input-group">
+                <label for="sourceText">Text to translate:</label>
+                <textarea id="sourceText" placeholder="Enter text to translate...">Hello! How are you doing today? I hope you're having a wonderful day!</textarea>
+            </div>
+            <div class="input-group">
+                <label for="sourceLang">Source Language:</label>
+                <select id="sourceLang">
+                    <option value="auto">Auto-detect</option>
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="targetLang">Target Language:</label>
+                <select id="targetLang">
+                    <option value="es">Spanish</option>
+                    <option value="en">English</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                </select>
+            </div>
+            <button onclick="testTextTranslation()">Translate Text</button>
+            <div class="progress" id="translationProgress"><div class="progress-bar"></div></div>
+            <div id="translationResult" class="result"></div>
+        </div>
+
+        <!-- Page Translation Test -->
+        <div class="test-section">
+            <h3>📄 Current Page Translation Test</h3>
+            <div class="input-group">
+                <label for="pageTargetLang">Target Language for Page:</label>
+                <select id="pageTargetLang">
+                    <option value="es">Spanish</option>
+                    <option value="en">English</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                </select>
+            </div>
+            <button onclick="testPageTranslation()">Translate Current Page</button>
+            <div class="progress" id="pageProgress"><div class="progress-bar"></div></div>
+            <div id="pageResult" class="result"></div>
+        </div>
+
+        <!-- Intent Detection Test -->
+        <div class="test-section">
+            <h3>🧠 Intent Detection Test</h3>
+            <div class="input-group">
+                <label for="intentText">User Message:</label>
+                <textarea id="intentText" placeholder="Enter a message with translation intent...">Translate this page to Spanish</textarea>
+            </div>
+            <button onclick="testIntentDetection()">Detect Intent</button>
+            <div id="intentResult" class="result"></div>
+        </div>
+
+        <!-- Full Coordination Test -->
+        <div class="test-section">
+            <h3>🎯 Full Task Coordination Test</h3>
+            <div class="input-group">
+                <label for="coordinationText">User Message:</label>
+                <textarea id="coordinationText" placeholder="Enter a natural language request...">Please translate this page to French and also summarize it</textarea>
+            </div>
+            <button onclick="testFullCoordination()">Test Full Coordination</button>
+            <div class="progress" id="coordinationProgress"><div class="progress-bar"></div></div>
+            <div id="coordinationResult" class="result"></div>
+        </div>
+
+        <!-- Direct Translator Agent Test -->
+        <div class="test-section">
+            <h3>🔧 Direct Translator Agent Test</h3>
+            <p>Test the translator agent directly without coordination</p>
+            <div class="input-group">
+                <label for="directTranslateText">Text to translate directly:</label>
+                <textarea id="directTranslateText" placeholder="Enter text for direct translation...">Hello world! This is a direct test of the translator agent.</textarea>
+            </div>
+            <div class="input-group">
+                <label for="directTargetLang">Target Language:</label>
+                <select id="directTargetLang">
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                </select>
+            </div>
+            <button onclick="testDirectTranslatorAgent()">Test Direct Agent</button>
+            <div id="directAgentResult" class="result"></div>
+        </div>
+
+        <!-- Language Pairs Check -->
+        <div class="test-section">
+            <h3>🌐 Available Language Pairs</h3>
+            <button onclick="checkAvailableLanguagePairs()">Check Available Pairs</button>
+            <div id="languagePairsResult" class="result"></div>
+        </div>
+
+        <!-- Agent Capabilities Test -->
+        <div class="test-section">
+            <h3>📊 Agent Capabilities Test</h3>
+            <button onclick="testAgentCapabilities()">Test All Agent Capabilities</button>
+            <button onclick="testTranslatorSpecificCapabilities()">Test Translator Specific</button>
+            <div id="capabilitiesResult" class="result"></div>
+        </div>
+    </div>
+
+    <!-- Load all AI agent modules in dependency order -->
+    <script src="../js/ai-agents/utils.js"></script>
+    <script src="../js/ai-agents/chrome-integration.js"></script>
+    <script src="../js/ai-agents/summarizer.js"></script>
+    <script src="../js/ai-agents/translator.js"></script>
+    <script src="../js/ai-agents/prompter.js"></script>
+    <script src="../js/ai-agents/writer.js"></script>
+    <script src="../js/ai-agents/core.js"></script>
+    <script src="../js/ai-agents/index.js"></script>
+    <!-- Compatibility layer for backward compatibility -->
+    <script src="../js/ai-agents.js"></script>
+    
+    <script>
+        let aiAgents = null;
+        let progressTimers = {};
+
+        // Initialize AI Agents
+        async function initializeAgents() {
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    console.log('Waiting for AI Agents to load...');
+                    let retries = 0;
+                    while (typeof AIAgents === 'undefined' && retries < 50) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        retries++;
+                    }
+                    
+                    if (typeof AIAgents === 'undefined') {
+                        throw new Error('AI Agents failed to load after 5 seconds');
+                    }
+                }
+                
+                aiAgents = new AIAgents();
+                await aiAgents.initialize();
+                console.log('AI Agents initialized successfully');
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize AI Agents:', error);
+                return false;
+            }
+        }
+
+        // Update progress bars
+        function updateProgress(agentType, progress) {
+            const progressElement = document.getElementById(`${agentType}Progress`);
+            if (progressElement) {
+                progressElement.style.display = 'block';
+                const progressBar = progressElement.querySelector('.progress-bar');
+                progressBar.style.width = `${progress}%`;
+                
+                if (progress >= 100) {
+                    setTimeout(() => {
+                        progressElement.style.display = 'none';
+                    }, 2000);
+                }
+            }
+        }
+
+        // Listen for progress events
+        window.addEventListener('ai-progress', (event) => {
+            updateProgress(event.detail.agentType, event.detail.progress);
+        });
+
+        // System Requirements Check with Comprehensive AI Model Availability Check
+        async function checkSystemRequirements() {
+            const result = document.getElementById('systemCheck');
+            result.className = 'result';
+            result.textContent = 'Performing comprehensive system requirements check...';
+
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    result.textContent = 'Waiting for AI Agents to load...';
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    if (typeof AIAgents === 'undefined') {
+                        throw new Error('AI Agents not loaded. Please refresh the page.');
+                    }
+                }
+
+                const chromeVersion = AIAgents.getChromeVersion();
+                const isVersionSupported = AIAgents.isChromeVersionSupported();
+                const support = AIAgents.isSupported();
+                const environment = await AIAgents.checkEnvironment();
+
+                let output = '';
+                output += `🔍 COMPREHENSIVE AI MODEL AVAILABILITY CHECK\n`;
+                output += `=============================================\n\n`;
+                output += `Chrome Version: ${chromeVersion || 'Unknown'}\n`;
+                output += `Version Supported: ${isVersionSupported ? '✅' : '❌'}\n`;
+                output += `User Activation: ${environment.userActivation ? '✅ Active' : '❌ Required'}\n\n`;
+                
+                // Show comprehensive API summary
+                output += `📊 API SUMMARY:\n`;
+                output += `Total APIs: ${environment.summary.totalAPIs}\n`;
+                output += `Supported APIs: ${environment.summary.supportedAPIs}\n`;
+                output += `Ready APIs: ${environment.summary.readyAPIs}\n`;
+                output += `Passed APIs: ${environment.summary.passedAPIs}\n\n`;
+                
+                // Show detailed comprehensive checks
+                output += `🧪 COMPREHENSIVE API CHECKS (Supported + Availability + Ready):\n`;
+                output += `================================================================\n`;
+                if (environment.comprehensive) {
+                    for (const [apiName, result] of Object.entries(environment.comprehensive)) {
+                        output += `${apiName.toUpperCase()}:\n`;
+                        output += `  ✓ Supported: ${result.supported ? '✅' : '❌'}\n`;
+                        output += `  ✓ Availability: ${result.availability} ${result.availability === 'readily' ? '✅' : result.availability === 'after-download' ? '⏳' : '❌'}\n`;
+                        output += `  ✓ Ready: ${result.ready ? '✅' : '❌'}\n`;
+                        output += `  ✓ All Checks Passed: ${result.passed ? '✅' : '❌'}\n`;
+                        if (result.error) {
+                            output += `  ⚠️  Error: ${result.error}\n`;
+                        }
+                        output += `\n`;
+                    }
+                } else {
+                    output += `No comprehensive check data available\n`;
+                }
+
+                // Legacy API status for backward compatibility
+                output += `🔧 LEGACY API STATUS:\n`;
+                if (environment.apis) {
+                    for (const [apiName, status] of Object.entries(environment.apis)) {
+                        output += `- ${apiName}: ${status.supported ? '✅' : '❌'} (${status.availability || 'unknown'})\n`;
+                        if (status.error) {
+                            output += `  Error: ${status.error}\n`;
+                        }
+                    }
+                } else {
+                    output += `No detailed API information available\n`;
+                }
+
+                if (environment.recommendations && environment.recommendations.length > 0) {
+                    output += `\nRecommendations:\n`;
+                    environment.recommendations.forEach((rec, i) => {
+                        output += `${i + 1}. ${rec}\n`;
+                    });
+                }
+
+                result.textContent = output;
+                result.className = isVersionSupported ? 'result success' : 'result warning';
+
+            } catch (error) {
+                result.textContent = `Error checking requirements: ${error.message}\n\nStack: ${error.stack}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Comprehensive API Availability Test
+        async function testAPIAvailability() {
+            const result = document.getElementById('apiAvailability');
+            result.className = 'result';
+            result.textContent = 'Performing comprehensive API availability test...';
+
+            try {
+                if (!aiAgents) {
+                    const initialized = await initializeAgents();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize AI Agents');
+                    }
+                }
+
+                const capabilities = await aiAgents.getCapabilities();
+                
+                let output = '🧪 COMPREHENSIVE API AVAILABILITY TEST\n';
+                output += '=====================================\n\n';
+                
+                // Translator API comprehensive check
+                output += `TRANSLATOR API:\n`;
+                output += `  ✓ Supported: ${capabilities.translator.supported ? '✅' : '❌'}\n`;
+                output += `  ✓ Availability: ${capabilities.translator.availability || 'unknown'} ${capabilities.translator.availability === 'readily' ? '✅' : capabilities.translator.availability === 'after-download' ? '⏳' : '❌'}\n`;
+                output += `  ✓ Available: ${capabilities.translator.available ? '✅' : '❌'}\n`;
+                output += `  ✓ Ready: ${capabilities.translator.ready ? '✅' : '❌'}\n`;
+                output += `  ✓ All Checks Passed: ${capabilities.translator.passed ? '✅' : '❌'}\n`;
+                output += `  📅 Last Checked: ${capabilities.translator.lastChecked || 'Unknown'}\n`;
+                if (capabilities.translator.error) {
+                    output += `  ⚠️  Error: ${capabilities.translator.error}\n`;
+                }
+                output += `\n`;
+                
+                // Language Detector API comprehensive check
+                output += `LANGUAGE DETECTOR API:\n`;
+                output += `  ✓ Supported: ${capabilities.languageDetector.supported ? '✅' : '❌'}\n`;
+                output += `  ✓ Availability: ${capabilities.languageDetector.availability || 'unknown'} ${capabilities.languageDetector.availability === 'readily' ? '✅' : capabilities.languageDetector.availability === 'after-download' ? '⏳' : '❌'}\n`;
+                output += `  ✓ Available: ${capabilities.languageDetector.available ? '✅' : '❌'}\n`;
+                output += `  ✓ Ready: ${capabilities.languageDetector.ready ? '✅' : '❌'}\n`;
+                output += `  ✓ All Checks Passed: ${capabilities.languageDetector.passed ? '✅' : '❌'}\n`;
+                output += `  📅 Last Checked: ${capabilities.languageDetector.lastChecked || 'Unknown'}\n`;
+                if (capabilities.languageDetector.error) {
+                    output += `  ⚠️  Error: ${capabilities.languageDetector.error}\n`;
+                }
+                output += `\n`;
+                
+                // Summarizer API comprehensive check
+                output += `SUMMARIZER API:\n`;
+                output += `  ✓ Supported: ${capabilities.summarizer.supported ? '✅' : '❌'}\n`;
+                output += `  ✓ Availability: ${capabilities.summarizer.availability || 'unknown'} ${capabilities.summarizer.availability === 'readily' ? '✅' : capabilities.summarizer.availability === 'after-download' ? '⏳' : '❌'}\n`;
+                output += `  ✓ Available: ${capabilities.summarizer.available ? '✅' : '❌'}\n`;
+                output += `  ✓ Ready: ${capabilities.summarizer.ready ? '✅' : '❌'}\n`;
+                output += `  ✓ All Checks Passed: ${capabilities.summarizer.passed ? '✅' : '❌'}\n`;
+                output += `  📅 Last Checked: ${capabilities.summarizer.lastChecked || 'Unknown'}\n`;
+                if (capabilities.summarizer.error) {
+                    output += `  ⚠️  Error: ${capabilities.summarizer.error}\n`;
+                }
+                output += `\n`;
+                
+                // Prompter/LanguageModel API comprehensive check
+                output += `PROMPTER (LANGUAGE MODEL) API:\n`;
+                output += `  ✓ Supported: ${capabilities.prompter.supported ? '✅' : '❌'}\n`;
+                output += `  ✓ Availability: ${capabilities.prompter.availability || 'unknown'} ${capabilities.prompter.availability === 'readily' ? '✅' : capabilities.prompter.availability === 'after-download' ? '⏳' : '❌'}\n`;
+                output += `  ✓ Available: ${capabilities.prompter.available ? '✅' : '❌'}\n`;
+                output += `  ✓ Ready: ${capabilities.prompter.ready ? '✅' : '❌'}\n`;
+                output += `  ✓ All Checks Passed: ${capabilities.prompter.passed ? '✅' : '❌'}\n`;
+                output += `  📅 Last Checked: ${capabilities.prompter.lastChecked || 'Unknown'}\n`;
+                if (capabilities.prompter.error) {
+                    output += `  ⚠️  Error: ${capabilities.prompter.error}\n`;
+                }
+                output += `\n`;
+
+                // Summary
+                const totalAPIs = 4;
+                const passedAPIs = [capabilities.translator.passed, capabilities.languageDetector.passed, capabilities.summarizer.passed, capabilities.prompter.passed].filter(Boolean).length;
+                output += `📊 SUMMARY: ${passedAPIs}/${totalAPIs} APIs passed all comprehensive checks\n`;
+                
+                if (passedAPIs === totalAPIs) {
+                    output += `🎉 All APIs are fully ready for use!\n`;
+                } else if (passedAPIs > 0) {
+                    output += `⚠️  Some APIs may need model downloads or user interaction\n`;
+                } else {
+                    output += `❌ No APIs are ready. Check system requirements and Chrome version.\n`;
+                }
+
+                result.textContent = output;
+                result.className = passedAPIs > 0 ? 'result success' : 'result warning';
+
+            } catch (error) {
+                result.textContent = `Error testing API availability: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Language Detection Test
+        async function testLanguageDetection() {
+            const result = document.getElementById('detectionResult');
+            const text = document.getElementById('detectionText').value;
+            
+            if (!text.trim()) {
+                result.textContent = 'Please enter text to detect language';
+                result.className = 'result warning';
+                return;
+            }
+
+            result.className = 'result';
+            result.textContent = 'Detecting language...';
+            updateProgress('detection', 10);
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                updateProgress('detection', 30);
+                const detection = await aiAgents.detectLanguage(text);
+                updateProgress('detection', 100);
+
+                let output = 'Language Detection Results:\n\n';
+                output += `Primary Language: ${detection.language}\n`;
+                output += `Confidence: ${(detection.confidence * 100).toFixed(1)}%\n\n`;
+                
+                if (detection.allResults && detection.allResults.length > 1) {
+                    output += 'All Results:\n';
+                    detection.allResults.forEach((res, i) => {
+                        output += `${i + 1}. ${res.detectedLanguage} (${(res.confidence * 100).toFixed(1)}%)\n`;
+                    });
+                }
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                updateProgress('detection', 100);
+                result.textContent = `Language detection error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Text Translation Test
+        async function testTextTranslation() {
+            const result = document.getElementById('translationResult');
+            const text = document.getElementById('sourceText').value;
+            const sourceLang = document.getElementById('sourceLang').value;
+            const targetLang = document.getElementById('targetLang').value;
+            
+            if (!text.trim()) {
+                result.textContent = 'Please enter text to translate';
+                result.className = 'result warning';
+                return;
+            }
+
+            result.className = 'result';
+            result.textContent = 'Translating text...';
+            updateProgress('translation', 10);
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                updateProgress('translation', 30);
+                const translation = await aiAgents.translateText(text, targetLang, sourceLang);
+                updateProgress('translation', 100);
+
+                let output = 'Translation Results:\n\n';
+                output += `Source Language: ${translation.sourceLanguage}\n`;
+                output += `Target Language: ${translation.targetLanguage}\n`;
+                output += `Word Count: ${translation.wordCount}\n\n`;
+                output += `Original Text:\n"${translation.originalText}"\n\n`;
+                output += `Translated Text:\n"${translation.translatedText}"\n`;
+                
+                if (translation.message) {
+                    output += `\nNote: ${translation.message}`;
+                }
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                updateProgress('translation', 100);
+                result.textContent = `Translation error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Page Translation Test
+        async function testPageTranslation() {
+            const result = document.getElementById('pageResult');
+            const targetLang = document.getElementById('pageTargetLang').value;
+            
+            result.className = 'result';
+            result.textContent = 'Translating current page...';
+            updateProgress('page', 10);
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                updateProgress('page', 30);
+                result.textContent = 'Note: Page translation requires Chrome extension context. Simulating with page content...';
+                
+                // For testing without extension context, we'll translate the page content
+                const pageContent = document.body.innerText.substring(0, 1000); // First 1000 chars
+                const translation = await aiAgents.translateText(pageContent, targetLang, 'auto');
+                updateProgress('page', 100);
+
+                let output = 'Page Translation Results:\n\n';
+                output += `Page Title: ${document.title}\n`;
+                output += `Source Language: ${translation.sourceLanguage}\n`;
+                output += `Target Language: ${translation.targetLanguage}\n`;
+                output += `Content Preview (first 500 chars):\n"${translation.translatedText.substring(0, 500)}..."\n`;
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                updateProgress('page', 100);
+                result.textContent = `Page translation error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Intent Detection Test
+        async function testIntentDetection() {
+            const result = document.getElementById('intentResult');
+            const text = document.getElementById('intentText').value;
+            
+            if (!text.trim()) {
+                result.textContent = 'Please enter a message';
+                result.className = 'result warning';
+                return;
+            }
+
+            result.className = 'result';
+            result.textContent = 'Analyzing intent...';
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                const intent = await aiAgents.detectIntentWithAI(text);
+
+                let output = 'Intent Detection Results:\n\n';
+                output += `Primary Intent: ${intent.primary}\n`;
+                output += `Confidence: ${(intent.confidence * 100).toFixed(1)}%\n`;
+                output += `AI Powered: ${intent.aiPowered ? '✅' : '❌'}\n`;
+                output += `Reasoning: ${intent.reasoning}\n\n`;
+                
+                if (intent.secondary && intent.secondary.length > 0) {
+                    output += `Secondary Intents: ${intent.secondary.join(', ')}\n`;
+                }
+                
+                output += `Crafted Prompt: "${intent.craftedPrompt}"\n\n`;
+                
+                if (intent.targetLanguage) {
+                    output += `Target Language: ${intent.targetLanguage}\n`;
+                }
+                if (intent.sourceLanguage) {
+                    output += `Source Language: ${intent.sourceLanguage}\n`;
+                }
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                result.textContent = `Intent detection error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Full Coordination Test
+        async function testFullCoordination() {
+            const result = document.getElementById('coordinationResult');
+            const text = document.getElementById('coordinationText').value;
+            
+            if (!text.trim()) {
+                result.textContent = 'Please enter a message';
+                result.className = 'result warning';
+                return;
+            }
+
+            result.className = 'result';
+            result.textContent = 'Running full task coordination...';
+            updateProgress('coordination', 10);
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                updateProgress('coordination', 30);
+                
+                // Create mock page context for testing
+                const pageContext = document.body.innerText.substring(0, 500);
+                
+                // Use the new processUserMessage method for simplified coordination
+                const response = await aiAgents.processUserMessage(text, pageContext);
+                updateProgress('coordination', 60);
+
+                // Also test the detailed coordination
+                const coordinationResult = await aiAgents.coordinateTask(text, pageContext);
+                updateProgress('coordination', 100);
+
+                let output = 'Task Coordination Results:\n\n';
+                output += `Simplified Response (processUserMessage):\n"${response}"\n\n`;
+                
+                output += `Detailed Coordination Results:\n`;
+                if (coordinationResult && coordinationResult.results) {
+                    output += `Number of agents executed: ${coordinationResult.results.length}\n\n`;
+                    
+                    coordinationResult.results.forEach((result, index) => {
+                        output += `Agent ${index + 1} (${result.intent} - ${result.type}):\n`;
+                        output += `"${result.result.substring(0, 200)}${result.result.length > 200 ? '...' : ''}"\n\n`;
+                    });
+                } else {
+                    output += `Coordination result: ${coordinationResult}\n`;
+                }
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                updateProgress('coordination', 100);
+                result.textContent = `Coordination error: ${error.message}\n\nStack: ${error.stack}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Check Available Language Pairs
+        async function checkAvailableLanguagePairs() {
+            const result = document.getElementById('languagePairsResult');
+            
+            result.className = 'result';
+            result.textContent = 'Checking available language pairs... (This may take a while)';
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                const pairs = await aiAgents.getAvailableLanguagePairs();
+
+                let output = `Available Translation Pairs (${pairs.length} found):\n\n`;
+                
+                // Group by source language
+                const groupedPairs = {};
+                pairs.forEach(pair => {
+                    if (!groupedPairs[pair.source]) {
+                        groupedPairs[pair.source] = [];
+                    }
+                    groupedPairs[pair.source].push(`${pair.target} (${pair.availability})`);
+                });
+
+                Object.keys(groupedPairs).sort().forEach(source => {
+                    output += `${source.toUpperCase()}: ${groupedPairs[source].join(', ')}\n`;
+                });
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                result.textContent = `Error checking language pairs: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Direct Translator Agent Test
+        async function testDirectTranslatorAgent() {
+            const result = document.getElementById('directAgentResult');
+            const text = document.getElementById('directTranslateText').value;
+            const targetLang = document.getElementById('directTargetLang').value;
+            
+            if (!text.trim()) {
+                result.textContent = 'Please enter text to translate';
+                result.className = 'result warning';
+                return;
+            }
+
+            result.className = 'result';
+            result.textContent = 'Testing direct translator agent access...';
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                let output = 'Direct Translator Agent Test:\n\n';
+                
+                // Test direct access to translator agent
+                output += '1. Testing direct translator access...\n';
+                const translatorAgent = aiAgents.translator;
+                if (translatorAgent) {
+                    output += `✅ Translator agent accessible\n`;
+                    
+                    // Test capabilities
+                    const capabilities = await translatorAgent.getCapabilities();
+                    output += `✅ Capabilities retrieved\n`;
+                    output += `   Translator available: ${capabilities.translator?.available ? '✅' : '❌'}\n`;
+                    output += `   Language detector available: ${capabilities.languageDetector?.available ? '✅' : '❌'}\n\n`;
+                    
+                    // Test translation
+                    output += '2. Testing direct translation...\n';
+                    const translation = await translatorAgent.translateText(text, targetLang, 'auto');
+                    output += `✅ Translation completed\n`;
+                    output += `   Source language: ${translation.sourceLanguage}\n`;
+                    output += `   Target language: ${translation.targetLanguage}\n`;
+                    output += `   Original: "${translation.originalText}"\n`;
+                    output += `   Translated: "${translation.translatedText}"\n\n`;
+                    
+                    // Test language detection if available
+                    if (capabilities.languageDetector?.available) {
+                        output += '3. Testing direct language detection...\n';
+                        const detection = await translatorAgent.detectLanguage(text);
+                        output += `✅ Language detection completed\n`;
+                        output += `   Detected language: ${detection.language}\n`;
+                        output += `   Confidence: ${(detection.confidence * 100).toFixed(1)}%\n`;
+                    } else {
+                        output += '3. Language detection not available\n';
+                    }
+                } else {
+                    output += `❌ Translator agent not accessible\n`;
+                }
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                result.textContent = `Direct agent test error: ${error.message}\n\nStack: ${error.stack}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Agent Capabilities Test
+        async function testAgentCapabilities() {
+            const result = document.getElementById('capabilitiesResult');
+            
+            result.className = 'result';
+            result.textContent = 'Testing all agent capabilities...';
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                const capabilities = await aiAgents.getCapabilities();
+                
+                let output = 'All Agent Capabilities:\n\n';
+                
+                // Summarizer
+                output += `Summarizer:\n`;
+                output += `  Supported: ${capabilities.summarizer?.supported ? '✅' : '❌'}\n`;
+                output += `  Available: ${capabilities.summarizer?.available ? '✅' : '❌'}\n`;
+                output += `  Ready: ${capabilities.summarizer?.ready ? '✅' : '❌'}\n`;
+                output += `  Availability: ${capabilities.summarizer?.availability || 'unknown'}\n`;
+                if (capabilities.summarizer?.error) {
+                    output += `  Error: ${capabilities.summarizer.error}\n`;
+                }
+                output += '\n';
+                
+                // Translator
+                output += `Translator:\n`;
+                output += `  Supported: ${capabilities.translator?.supported ? '✅' : '❌'}\n`;
+                output += `  Available: ${capabilities.translator?.available ? '✅' : '❌'}\n`;
+                output += `  Ready: ${capabilities.translator?.ready ? '✅' : '❌'}\n`;
+                output += `  Availability: ${capabilities.translator?.availability || 'unknown'}\n`;
+                if (capabilities.translator?.error) {
+                    output += `  Error: ${capabilities.translator.error}\n`;
+                }
+                output += '\n';
+                
+                // Language Detector
+                output += `Language Detector:\n`;
+                output += `  Supported: ${capabilities.languageDetector?.supported ? '✅' : '❌'}\n`;
+                output += `  Available: ${capabilities.languageDetector?.available ? '✅' : '❌'}\n`;
+                output += `  Ready: ${capabilities.languageDetector?.ready ? '✅' : '❌'}\n`;
+                output += `  Availability: ${capabilities.languageDetector?.availability || 'unknown'}\n`;
+                if (capabilities.languageDetector?.error) {
+                    output += `  Error: ${capabilities.languageDetector.error}\n`;
+                }
+                output += '\n';
+                
+                // Prompter
+                output += `Prompter (Language Model):\n`;
+                output += `  Supported: ${capabilities.prompter?.supported ? '✅' : '❌'}\n`;
+                output += `  Available: ${capabilities.prompter?.available ? '✅' : '❌'}\n`;
+                output += `  Ready: ${capabilities.prompter?.ready ? '✅' : '❌'}\n`;
+                output += `  Availability: ${capabilities.prompter?.availability || 'unknown'}\n`;
+                if (capabilities.prompter?.error) {
+                    output += `  Error: ${capabilities.prompter.error}\n`;
+                }
+                output += '\n';
+                
+                // Writer
+                output += `Writer:\n`;
+                output += `  Supported: ${capabilities.writer?.supported ? '✅' : '❌'}\n`;
+                output += `  Available: ${capabilities.writer?.available ? '✅' : '❌'}\n`;
+                output += `  Ready: ${capabilities.writer?.ready ? '✅' : '❌'}\n`;
+                output += `  Availability: ${capabilities.writer?.availability || 'unknown'}\n`;
+                if (capabilities.writer?.error) {
+                    output += `  Error: ${capabilities.writer.error}\n`;
+                }
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                result.textContent = `Capabilities test error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Translator Specific Capabilities Test
+        async function testTranslatorSpecificCapabilities() {
+            const result = document.getElementById('capabilitiesResult');
+            
+            result.className = 'result';
+            result.textContent = 'Testing translator-specific capabilities...';
+
+            try {
+                if (!aiAgents) {
+                    await initializeAgents();
+                }
+
+                let output = 'Translator-Specific Capabilities:\n\n';
+                
+                // Test translator agent directly
+                if (aiAgents.translator) {
+                    const translatorCaps = await aiAgents.translator.getCapabilities();
+                    
+                    output += 'Direct Translator Agent Capabilities:\n';
+                    output += JSON.stringify(translatorCaps, null, 2);
+                    output += '\n\n';
+                    
+                    // Test Chrome integration
+                    output += 'Chrome Integration Support:\n';
+                    const chromeSupport = AIAgents.isSupported();
+                    output += `  Translator API: ${chromeSupport.translator ? '✅' : '❌'}\n`;
+                    output += `  Language Detector API: ${chromeSupport.languageDetector ? '✅' : '❌'}\n\n`;
+                    
+                    // Test raw API availability
+                    output += 'Raw Chrome APIs:\n';
+                    try {
+                        if ('Translator' in window) {
+                            const translatorAvailability = await window.Translator.availability();
+                            output += `  window.Translator: ✅ (${translatorAvailability})\n`;
+                        } else {
+                            output += `  window.Translator: ❌ Not found\n`;
+                        }
+                    } catch (error) {
+                        output += `  window.Translator: ❌ Error - ${error.message}\n`;
+                    }
+                    
+                    try {
+                        if ('LanguageDetector' in window) {
+                            const detectorAvailability = await window.LanguageDetector.availability();
+                            output += `  window.LanguageDetector: ✅ (${detectorAvailability})\n`;
+                        } else {
+                            output += `  window.LanguageDetector: ❌ Not found\n`;
+                        }
+                    } catch (error) {
+                        output += `  window.LanguageDetector: ❌ Error - ${error.message}\n`;
+                    }
+                } else {
+                    output += 'Translator agent not available\n';
+                }
+
+                result.textContent = output;
+                result.className = 'result success';
+
+            } catch (error) {
+                result.textContent = `Translator capabilities test error: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.log('Translator Agent Test Suite loaded with new modular structure');
+            
+            // Auto-run system check after modules load
+            setTimeout(checkSystemRequirements, 2000);
+        });
+    </script>
+</body>
+</html>

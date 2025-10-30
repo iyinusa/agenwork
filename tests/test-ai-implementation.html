@@ -1,0 +1,781 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Implementation Test - AgenWork</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .test-button:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        .results {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AgenWork AI Agents Test Suite</h1>
+        <p style="text-align: center; color: #666;">
+            Test the modular AI Agents system powered by Chrome's Built-in AI APIs
+        </p>
+        <p style="text-align: center; color: #888; font-size: 14px;">
+            Updated for the new modular architecture with separate agent modules
+        </p>
+
+        <div class="test-section">
+            <h3>🔍 Environment Check</h3>
+            <button class="test-button" onclick="checkEnvironment()">Check Environment</button>
+            <button class="test-button" onclick="checkAPIs()">Check API Availability</button>
+            <div id="environmentResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Summarizer API Test</h3>
+            <button class="test-button" onclick="testSummarizer()">Test Summarizer</button>
+            <button class="test-button" onclick="testSummarizerWithContent()">Test with Sample Content</button>
+            <div id="summarizerResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>💬 Language Model API Test</h3>
+            <button class="test-button" onclick="testLanguageModel()">Test Language Model</button>
+            <button class="test-button" onclick="testWithJsonSchema()">Test JSON Schema</button>
+            <div id="languageModelResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧠 AgenWork AI Agents Test</h3>
+            <button class="test-button" onclick="testAIAgents()">Test AI Agents Class</button>
+            <button class="test-button" onclick="testIntentDetection()">Test Intent Detection</button>
+            <div id="aiAgentsResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🤖 Task Coordination Test</h3>
+            <button class="test-button" onclick="testTaskCoordination()">Test Task Coordination</button>
+            <button class="test-button" onclick="testUserMessageProcessing()">Test User Message Processing</button>
+            <button class="test-button" onclick="testPromptAPI()">Test Prompt API Research</button>
+            <div id="coordinationResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 System Diagnostics</h3>
+            <button class="test-button" onclick="testDiagnostics()">Run Full Diagnostics</button>
+            <button class="test-button" onclick="testModuleStatus()">Check Module Status</button>
+            <div id="diagnosticsResults" class="results" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Load all AI agent modules in dependency order -->
+    <script src="../js/ai-agents/utils.js"></script>
+    <script src="../js/ai-agents/chrome-integration.js"></script>
+    <script src="../js/ai-agents/summarizer.js"></script>
+    <script src="../js/ai-agents/translator.js"></script>
+    <script src="../js/ai-agents/prompter.js"></script>
+    <script src="../js/ai-agents/writer.js"></script>
+    <script src="../js/ai-agents/core.js"></script>
+    <script src="../js/ai-agents/index.js"></script>
+    <script>
+        let testResults = {};
+        
+        function showResults(sectionId, content) {
+            const element = document.getElementById(sectionId);
+            element.style.display = 'block';
+            element.textContent = content;
+        }
+
+        function addStatus(text, type = 'info') {
+            return `<span class="status ${type}">${text}</span>`;
+        }
+
+        async function checkEnvironment() {
+            showResults('environmentResults', 'Checking environment...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('environmentResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                const results = await AIAgents.checkEnvironment();
+                testResults.environment = results;
+                
+                let output = `Chrome Version: ${results.chromeVersion || 'Unknown'}\n`;
+                output += `Version Supported: ${results.isChromeVersionSupported ? '✅' : '❌'}\n`;
+                output += `User Activation: ${results.userActivation ? '✅' : '❌'}\n\n`;
+                
+                output += `API Status:\n`;
+                for (const [apiName, status] of Object.entries(results.apis)) {
+                    output += `  ${apiName}: `;
+                    if (status.supported) {
+                        output += `✅ Supported (${status.availability || 'unknown availability'})`;
+                        if (status.ready) output += ' - Ready!';
+                    } else {
+                        output += `❌ Not supported`;
+                        if (status.error) output += ` - ${status.error}`;
+                    }
+                    output += `\n`;
+                }
+                
+                if (results.recommendations && results.recommendations.length > 0) {
+                    output += `\nRecommendations:\n`;
+                    results.recommendations.forEach((rec, i) => {
+                        output += `  ${i + 1}. ${rec}\n`;
+                    });
+                }
+                
+                showResults('environmentResults', output);
+            } catch (error) {
+                showResults('environmentResults', `Error checking environment: ${error.message}`);
+            }
+        }
+
+        async function checkAPIs() {
+            showResults('environmentResults', 'Checking individual API availability...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('environmentResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                let output = '';
+                
+                // Check Chrome Integration support
+                const support = AIAgents.isSupported();
+                output += `Chrome Integration Support:\n`;
+                output += `  Summarizer: ${support.summarizer ? '✅' : '❌'}\n`;
+                output += `  Prompter (LanguageModel): ${support.prompter ? '✅' : '❌'}\n`;
+                output += `  Translator: ${support.translator ? '✅' : '❌'}\n`;
+                output += `  Writer: ${support.writer ? '✅' : '❌'}\n\n`;
+                
+                // Check raw APIs
+                output += `Raw API Availability:\n`;
+                
+                // Check Summarizer
+                try {
+                    if ('Summarizer' in window) {
+                        const availability = await window.Summarizer.availability();
+                        output += `  Summarizer: ✅ Available (${availability})\n`;
+                    } else {
+                        output += `  Summarizer: ❌ Not found in window\n`;
+                    }
+                } catch (error) {
+                    output += `  Summarizer: ❌ Error - ${error.message}\n`;
+                }
+                
+                // Check LanguageModel
+                try {
+                    if ('LanguageModel' in window) {
+                        const availability = await window.LanguageModel.availability();
+                        output += `  LanguageModel: ✅ Available (${availability})\n`;
+                    } else {
+                        output += `  LanguageModel: ❌ Not found in window\n`;
+                    }
+                } catch (error) {
+                    output += `  LanguageModel: ❌ Error - ${error.message}\n`;
+                }
+                
+                // Check other APIs
+                ['Translator', 'Writer'].forEach(apiName => {
+                    if (apiName in window) {
+                        output += `  ${apiName}: ✅ Found in window\n`;
+                    } else {
+                        output += `  ${apiName}: ❌ Not found in window\n`;
+                    }
+                });
+                
+                showResults('environmentResults', output);
+            } catch (error) {
+                showResults('environmentResults', `Error checking APIs: ${error.message}`);
+            }
+        }
+
+        async function testSummarizer() {
+            showResults('summarizerResults', 'Testing Summarizer API...');
+            
+            try {
+                // Check availability first
+                const availability = await window.Summarizer.availability();
+                if (availability === 'no') {
+                    throw new Error('Summarizer is not available on this device');
+                }
+                
+                let output = `Availability: ${availability}\n\n`;
+                
+                if (availability === 'after-download') {
+                    output += 'Model needs to be downloaded first...\n\n';
+                }
+                
+                // Create summarizer
+                const summarizer = await window.Summarizer.create({
+                    type: 'key-points',
+                    format: 'markdown',
+                    length: 'short',
+                    outputLanguage: 'en',
+                    monitor: (m) => {
+                        m.addEventListener('downloadprogress', (e) => {
+                            console.log(`Download: ${(e.loaded * 100).toFixed(1)}%`);
+                        });
+                    }
+                });
+                
+                output += '✅ Summarizer created successfully!\n\n';
+                
+                // Test summarization
+                const testText = 'This is a comprehensive test of the Chrome Built-in Summarizer API. The API provides the ability to generate summaries of text content directly in the browser without sending data to external servers. This ensures user privacy while providing powerful AI capabilities. The API supports different types of summaries including key points, TL;DR, teasers, and headlines. Each type can have different lengths from short to long. The implementation uses the latest Chrome Built-in AI technology powered by Gemini Nano.';
+                
+                const summary = await summarizer.summarize(testText);
+                output += `Test Summary:\n${summary}\n`;
+                
+                showResults('summarizerResults', output);
+                
+            } catch (error) {
+                showResults('summarizerResults', `❌ Error: ${error.message}\n\nStack: ${error.stack}`);
+            }
+        }
+
+        async function testSummarizerWithContent() {
+            showResults('summarizerResults', 'Testing Summarizer with page content...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('summarizerResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const aiAgents = new AIAgents();
+                await aiAgents.initialize();
+                
+                // Check if summarizer is available
+                const capabilities = await aiAgents.getCapabilities();
+                if (!capabilities.summarizer || !capabilities.summarizer.available) {
+                    showResults('summarizerResults', '❌ Summarizer API is not available on this device');
+                    return;
+                }
+                
+                // Get page content
+                const pageContent = document.body.innerText;
+                const result = await aiAgents.summarizeText(pageContent, 'This is a test page for AI API functionality');
+                
+                let output = `✅ Page Summary using AgenWork AI Agents:\n${result}\n`;
+                showResults('summarizerResults', output);
+                
+            } catch (error) {
+                showResults('summarizerResults', `❌ Error: ${error.message}\n\nStack: ${error.stack}`);
+            }
+        }
+
+        async function testLanguageModel() {
+            showResults('languageModelResults', 'Testing Language Model API...');
+            
+            try {
+                // Check availability first
+                const availability = await window.LanguageModel.availability();
+                if (availability === 'no') {
+                    throw new Error('Language Model is not available on this device');
+                }
+                
+                let output = `Availability: ${availability}\n\n`;
+                
+                if (availability === 'after-download') {
+                    output += 'Model needs to be downloaded first...\n\n';
+                }
+                
+                // Get model parameters
+                const params = await window.LanguageModel.params();
+                output += `Model Parameters:\n${JSON.stringify(params, null, 2)}\n\n`;
+                
+                // Create language model session
+                const session = await window.LanguageModel.create({
+                    monitor: (m) => {
+                        m.addEventListener('downloadprogress', (e) => {
+                            console.log(`Download: ${(e.loaded * 100).toFixed(1)}%`);
+                        });
+                    }
+                });
+                
+                output += '✅ Language Model session created successfully!\n\n';
+                
+                // Test prompting
+                const response = await session.prompt('Hello! Please respond with a friendly greeting and confirm that you are working correctly.');
+                output += `Test Response:\n${response}\n`;
+                
+                showResults('languageModelResults', output);
+                
+            } catch (error) {
+                showResults('languageModelResults', `❌ Error: ${error.message}\n\nStack: ${error.stack}`);
+            }
+        }
+
+        async function testWithJsonSchema() {
+            showResults('languageModelResults', 'Testing Language Model with JSON Schema...');
+            
+            try {
+                const session = await window.LanguageModel.create();
+                
+                const schema = {
+                    type: "object",
+                    properties: {
+                        greeting: { type: "string" },
+                        working: { type: "boolean" },
+                        confidence: { type: "number", minimum: 0, maximum: 1 }
+                    },
+                    required: ["greeting", "working", "confidence"]
+                };
+                
+                const response = await session.prompt(
+                    'Please respond with a JSON object containing a greeting, whether you are working correctly, and your confidence level.',
+                    { responseConstraint: schema }
+                );
+                
+                const parsed = JSON.parse(response);
+                
+                let output = `✅ JSON Schema test successful!\n\n`;
+                output += `Raw response: ${response}\n\n`;
+                output += `Parsed object:\n${JSON.stringify(parsed, null, 2)}\n`;
+                
+                showResults('languageModelResults', output);
+                
+            } catch (error) {
+                showResults('languageModelResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testAIAgents() {
+            showResults('aiAgentsResults', 'Testing AgenWork AI Agents class...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('aiAgentsResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const aiAgents = new AIAgents();
+                const initialized = await aiAgents.initialize();
+                
+                let output = `Initialization: ${initialized ? '✅' : '❌'}\n\n`;
+                
+                // Test capabilities
+                const capabilities = await aiAgents.getCapabilities();
+                output += `Capabilities:\n`;
+                output += `  Summarizer: ${capabilities.summarizer?.available ? '✅' : '❌'} (${capabilities.summarizer?.availability || 'unknown'})\n`;
+                output += `  Translator: ${capabilities.translator?.available ? '✅' : '❌'} (${capabilities.translator?.availability || 'unknown'})\n`;
+                output += `  Language Detector: ${capabilities.languageDetector?.available ? '✅' : '❌'} (${capabilities.languageDetector?.availability || 'unknown'})\n`;
+                output += `  Prompter: ${capabilities.prompter?.available ? '✅' : '❌'} (${capabilities.prompter?.availability || 'unknown'})\n`;
+                output += `  Writer: ${capabilities.writer?.available ? '✅' : '❌'} (${capabilities.writer?.availability || 'unknown'})\n\n`;
+                
+                // Test summarization if available
+                if (capabilities.summarizer && capabilities.summarizer.available) {
+                    try {
+                        const summary = await aiAgents.summarizeText('This is a test text for the AI Agents summarization functionality. The new modular system provides better organization and improved capabilities for AI-powered features in the browser extension.');
+                        output += `Summarization test: ✅\n${summary}\n\n`;
+                    } catch (error) {
+                        output += `Summarization test: ❌ Error - ${error.message}\n\n`;
+                    }
+                } else {
+                    output += `Summarization test: ❌ Not available\n\n`;
+                }
+
+                // Test translation if available
+                if (capabilities.translator && capabilities.translator.available) {
+                    try {
+                        const translation = await aiAgents.translateText('Hello, this is a test message', 'es');
+                        output += `Translation test (EN->ES): ✅\n${translation}\n\n`;
+                    } catch (error) {
+                        output += `Translation test: ❌ Error - ${error.message}\n\n`;
+                    }
+                } else {
+                    output += `Translation test: ❌ Not available\n\n`;
+                }
+                
+                showResults('aiAgentsResults', output);
+                
+            } catch (error) {
+                showResults('aiAgentsResults', `❌ Error: ${error.message}\n\nStack: ${error.stack}`);
+            }
+        }
+
+        async function testIntentDetection() {
+            showResults('aiAgentsResults', 'Testing Intent Detection...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('aiAgentsResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const aiAgents = new AIAgents();
+                await aiAgents.initialize();
+                
+                let output = 'Intent Detection Test Results:\n\n';
+                
+                // Check if prompter is available for intent detection
+                const capabilities = await aiAgents.getCapabilities();
+                output += `Prompter Status: ${capabilities.prompter?.supported ? '✅ Supported' : '❌ Not Supported'}`;
+                if (capabilities.prompter?.supported) {
+                    output += ` (${capabilities.prompter.available ? 'Available' : 'Not Available'})`;
+                    output += ` - Availability: ${capabilities.prompter.availability || 'unknown'}`;
+                }
+                output += '\n\n';
+                
+                if (!capabilities.prompter || !capabilities.prompter.supported) {
+                    output += '❌ Intent detection requires LanguageModel API which is not supported';
+                    showResults('aiAgentsResults', output);
+                    return;
+                }
+                
+                if (!capabilities.prompter.available) {
+                    output += '⚠️ LanguageModel API supported but not available - will attempt to use anyway (may trigger download)\n\n';
+                }
+                
+                const testMessages = [
+                    'Please summarize this page',
+                    'Can you help me write an email?',
+                    'Translate this to Spanish',
+                    'Research information about AI technology',
+                    'What does this page say about machine learning?'
+                ];
+                
+                for (const message of testMessages) {
+                    try {
+                        output += `Testing: "${message}"\n`;
+                        const intent = await aiAgents.detectIntentWithAI(message);
+                        output += `  Primary Intent: ${intent.primary}\n`;
+                        output += `  Confidence: ${(intent.confidence * 100).toFixed(1)}%\n`;
+                        output += `  AI Powered: ${intent.aiPowered ? '✅ Yes' : '❌ No (fallback)'}\n`;
+                        if (intent.secondary && intent.secondary.length > 0) {
+                            output += `  Secondary Intents: ${intent.secondary.join(', ')}\n`;
+                        }
+                        output += `  Reasoning: ${intent.reasoning}\n`;
+                        output += `  Crafted Prompt: ${intent.craftedPrompt.substring(0, 100)}...\n\n`;
+                    } catch (error) {
+                        output += `  Error: ${error.message}\n\n`;
+                    }
+                }
+                
+                showResults('aiAgentsResults', output);
+                
+            } catch (error) {
+                showResults('aiAgentsResults', `❌ Error: ${error.message}\n\nStack: ${error.stack}`);
+            }
+        }
+
+        async function testTaskCoordination() {
+            showResults('coordinationResults', 'Testing Task Coordination...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('coordinationResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const aiAgents = new AIAgents();
+                await aiAgents.initialize();
+                
+                const testTasks = [
+                    'Summarize this page about AI testing',
+                    'Translate "Hello world" to Spanish',
+                    'Help me write a professional email'
+                ];
+                
+                let output = 'Task Coordination Test Results:\n\n';
+                
+                for (const task of testTasks) {
+                    try {
+                        output += `Task: "${task}"\n`;
+                        const coordinationResult = await aiAgents.coordinateTask(task, 'Test page content about AI APIs and Chrome integration');
+                        
+                        output += `  Results: ${coordinationResult.results.length} agent(s) executed\n`;
+                        coordinationResult.results.forEach((result, index) => {
+                            output += `    ${index + 1}. ${result.intent} (${result.type}): ${result.result.substring(0, 100)}...\n`;
+                        });
+                        output += '\n';
+                    } catch (error) {
+                        output += `  Error: ${error.message}\n\n`;
+                    }
+                }
+                
+                showResults('coordinationResults', output);
+                
+            } catch (error) {
+                showResults('coordinationResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testUserMessageProcessing() {
+            showResults('coordinationResults', 'Testing User Message Processing...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('coordinationResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const aiAgents = new AIAgents();
+                await aiAgents.initialize();
+                
+                const testMessages = [
+                    'What is this page about?',
+                    'Can you help me understand machine learning?',
+                    'Translate this text to French'
+                ];
+                
+                let output = 'User Message Processing Test Results:\n\n';
+                
+                for (const message of testMessages) {
+                    try {
+                        output += `Message: "${message}"\n`;
+                        const response = await aiAgents.processUserMessage(message, 'This is a test page about Chrome Built-in AI APIs');
+                        output += `Response: ${response}\n\n`;
+                    } catch (error) {
+                        output += `Error: ${error.message}\n\n`;
+                    }
+                }
+                
+                showResults('coordinationResults', output);
+                
+            } catch (error) {
+                showResults('coordinationResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testPromptAPI() {
+            showResults('coordinationResults', 'Testing Prompt API Research Functionality...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('coordinationResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const aiAgents = new AIAgents();
+                await aiAgents.initialize();
+                
+                let output = 'Prompt API Research Test:\n\n';
+                
+                // Check LanguageModel availability
+                const capabilities = await aiAgents.getCapabilities();
+                output += `LanguageModel Status: ${capabilities.prompter?.supported ? '✅ Supported' : '❌ Not Supported'}`;
+                if (capabilities.prompter?.supported) {
+                    output += ` (${capabilities.prompter.available ? 'Available' : 'Not Available'})`;
+                    output += ` - ${capabilities.prompter.availability || 'unknown'}`;
+                }
+                output += '\n\n';
+                
+                if (!capabilities.prompter?.supported) {
+                    output += '❌ LanguageModel API not supported - cannot test Prompt API';
+                    showResults('coordinationResults', output);
+                    return;
+                }
+                
+                // Test research queries
+                const testQueries = [
+                    'What is artificial intelligence?',
+                    'Explain how machine learning works',
+                    'What are the benefits of Chrome Built-in AI APIs?'
+                ];
+                
+                for (const query of testQueries) {
+                    try {
+                        output += `Query: "${query}"\n`;
+                        const startTime = Date.now();
+                        const response = await aiAgents.handleResearchQuery(query);
+                        const endTime = Date.now();
+                        
+                        output += `✅ Success (${endTime - startTime}ms)\n`;
+                        output += `Response: ${response.substring(0, 200)}${response.length > 200 ? '...' : ''}\n\n`;
+                    } catch (error) {
+                        output += `❌ Error: ${error.message}\n\n`;
+                    }
+                }
+                
+                showResults('coordinationResults', output);
+                
+            } catch (error) {
+                showResults('coordinationResults', `❌ Error: ${error.message}\n\nStack: ${error.stack}`);
+            }
+        }
+
+        async function testDiagnostics() {
+            showResults('diagnosticsResults', 'Running Full Diagnostics...');
+            
+            try {
+                // Wait for AI Agents to be available
+                if (typeof AIAgents === 'undefined') {
+                    showResults('diagnosticsResults', 'Waiting for AI Agents to load...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+
+                const aiAgents = new AIAgents();
+                await aiAgents.initialize();
+                
+                const diagnostics = await aiAgents.getDiagnostics();
+                
+                let output = 'System Diagnostics:\n\n';
+                output += `Chrome Version: ${diagnostics.system.chromeVersion}\n`;
+                output += `User Agent: ${diagnostics.system.userAgent.substring(0, 80)}...\n`;
+                output += `Initialization Status: ${diagnostics.system.initialized ? '✅' : '❌'}\n`;
+                output += `Preferred Language: ${diagnostics.system.preferredLanguage}\n\n`;
+                
+                output += 'Agent Capabilities:\n';
+                for (const [agent, caps] of Object.entries(diagnostics.capabilities)) {
+                    output += `  ${agent}: ${caps.available ? '✅' : '❌'} (${caps.availability || 'unknown'})\n`;
+                    if (caps.error) {
+                        output += `    Error: ${caps.error}\n`;
+                    }
+                }
+                
+                if (diagnostics.recommendations && diagnostics.recommendations.length > 0) {
+                    output += '\nRecommendations:\n';
+                    diagnostics.recommendations.forEach((rec, index) => {
+                        output += `  ${index + 1}. ${rec}\n`;
+                    });
+                }
+                
+                showResults('diagnosticsResults', output);
+                
+            } catch (error) {
+                showResults('diagnosticsResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testModuleStatus() {
+            showResults('diagnosticsResults', 'Checking Module Status...');
+            
+            try {
+                let output = 'Module Loading Status:\n\n';
+                
+                // Check if core classes are loaded
+                const modules = [
+                    'AIUtils',
+                    'ChromeIntegration',
+                    'SummarizerAgent',
+                    'TranslatorAgent', 
+                    'PrompterAgent',
+                    'WriterAgent',
+                    'AIAgents'
+                ];
+                
+                modules.forEach(moduleName => {
+                    const isLoaded = typeof window[moduleName] !== 'undefined';
+                    output += `${moduleName}: ${isLoaded ? '✅ Loaded' : '❌ Not loaded'}\n`;
+                });
+                
+                output += '\n';
+                
+                // Check window.AI APIs
+                output += 'Chrome Built-in AI APIs:\n';
+                const apis = ['Summarizer', 'LanguageModel', 'Translator', 'Writer'];
+                apis.forEach(apiName => {
+                    const isAvailable = apiName in window;
+                    output += `window.${apiName}: ${isAvailable ? '✅ Available' : '❌ Not available'}\n`;
+                });
+                
+                // Test AI Agents instantiation
+                output += '\nAI Agents Instantiation Test:\n';
+                try {
+                    if (typeof AIAgents !== 'undefined') {
+                        const testInstance = new AIAgents();
+                        output += 'AIAgents instance creation: ✅ Success\n';
+                        output += `Preferred language: ${testInstance.getPreferredLanguage()}\n`;
+                        output += `Initialized: ${testInstance.initialized}\n`;
+                    } else {
+                        output += 'AIAgents instance creation: ❌ AIAgents class not available\n';
+                    }
+                } catch (error) {
+                    output += `AIAgents instance creation: ❌ Error - ${error.message}\n`;
+                }
+                
+                showResults('diagnosticsResults', output);
+                
+            } catch (error) {
+                showResults('diagnosticsResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('AI Test Page loaded with new modular structure');
+            console.log('Available test functions:');
+            console.log('- checkEnvironment()');
+            console.log('- checkAPIs()');
+            console.log('- testSummarizer()');
+            console.log('- testLanguageModel()');
+            console.log('- testAIAgents()');
+            console.log('- testIntentDetection()');
+            console.log('- testTaskCoordination()');
+            console.log('- testUserMessageProcessing()');
+            console.log('- testDiagnostics()');
+            console.log('- testModuleStatus()');
+        });
+    </script>
+</body>
+</html>

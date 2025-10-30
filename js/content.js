@@ -132,11 +132,22 @@ function extractPageContent() {
         throw new Error('Summarizer API is not available on this device');
       }
       
-      // Create summarizer
+      // Create summarizer with proper validation
+      const supportedLanguages = ['en', 'es', 'ja']; // Chrome Built-in AI supported languages
+      const outputLanguage = options.outputLanguage || 'en';
+      const finalOutputLanguage = supportedLanguages.includes(outputLanguage) ? outputLanguage : 'en';
+      
+      if (outputLanguage !== finalOutputLanguage) {
+        console.warn(`Unsupported output language '${outputLanguage}'. Using '${finalOutputLanguage}' instead.`);
+      }
+      
+      console.log('Content script: Creating summarizer with outputLanguage:', finalOutputLanguage);
+      
       const summarizer = await self.Summarizer.create({
         type: options.type || 'key-points',
         format: options.format || 'markdown',
         length: options.length || 'medium',
+        outputLanguage: finalOutputLanguage, // REQUIRED: Must be one of 'en', 'es', 'ja'
         ...options
       });
       
@@ -157,6 +168,13 @@ function extractPageContent() {
       };
       
     } catch (error) {
+      console.error('Content script summarization error:', error);
+      
+      // Provide specific error message for outputLanguage issue
+      if (error.message && error.message.includes('No output language was specified')) {
+        throw new Error('Summarizer API requires an output language. The content script may need to be updated or the page refreshed.');
+      }
+      
       throw new Error(`Summarization failed: ${error.message}`);
     }
   }

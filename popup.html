@@ -42,7 +42,7 @@
                                 <img src="images/icon.png" alt="">
                             </div>
                             <h2>Welcome to AgenWork</h2>
-                            <p>Your smart browsing assistant powered by Chrome's built-in AI. Ask me anything!</p>
+                            <p>Your intelligent multi-agent assistant powered by Chrome's built-in AI. Our specialized agents work together to understand and fulfill your requests!</p>
                             <div class="quick-actions">
                                 <button class="quick-action-btn" data-action="summarize">
                                     <i class="far fa-file-lines"></i>
@@ -55,6 +55,10 @@
                                 <button class="quick-action-btn" data-action="write">
                                     <i class="fas fa-pen"></i>
                                     Help Write
+                                </button>
+                                <button class="quick-action-btn" data-action="research">
+                                    <i class="fas fa-search"></i>
+                                    Research
                                 </button>
                             </div>
                         </div>
@@ -171,6 +175,17 @@
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label for="aiLanguageSelect">AI Output Language</label>
+                                <p>Preferred language for AI responses and summaries</p>
+                            </div>
+                            <select id="aiLanguageSelect" class="setting-control">
+                                <option value="en">English</option>
+                                <option value="es">Español (Spanish)</option>
+                                <option value="ja">日本語 (Japanese)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Privacy Settings -->
@@ -218,9 +233,9 @@
                             <p><strong id="versionDisplay">AgenWork v1.0.0</strong></p>
                             <p>A smart browsing agent powered by Chrome's built-in AI APIs</p>
                             <div class="about-links">
-                                <a href="#" class="about-link">Privacy Policy</a>
-                                <a href="#" class="about-link">Terms of Service</a>
-                                <a href="#" class="about-link">Support</a>
+                                <a href="https://github.com/iyinusa/agenwork/blob/main/privacy.md" class="about-link">Privacy Policy</a>
+                                <a href="https://github.com/iyinusa/agenwork/blob/main/terms.md" class="about-link">Terms of Service</a>
+                                <a href="https://github.com/iyinusa/agenwork/issues" class="about-link">Support</a>
                             </div>
                         </div>
                     </div>
@@ -241,7 +256,21 @@
     <script src="js/dexie.min.js"></script>
     <script src="js/database.js"></script>
     <script src="js/markdown-renderer.js"></script>
+    
+    <!-- AI Agents System - Load compatibility layer first -->
     <script src="js/ai-agents.js"></script>
+    
+    <!-- AI Agents Modular System -->
+    <script src="js/ai-agents/utils.js"></script>
+    <script src="js/ai-agents/chrome-integration.js"></script>
+    <script src="js/ai-agents/summarizer.js"></script>
+    <script src="js/ai-agents/translator.js"></script>
+    <script src="js/ai-agents/prompter.js"></script>
+    <script src="js/ai-agents/writer.js"></script>
+    <script src="js/ai-agents/core.js"></script>
+    <script src="js/ai-agents/index.js"></script>
+    
+    <!-- Main popup script -->
     <script src="js/popup.js"></script>
 </body>
 </html>

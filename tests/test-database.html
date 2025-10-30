@@ -1,80 +1,796 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AgenWork Database Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgenWork Database Test Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }
+        .test-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .test-button:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .results {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .progress {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            background: #28a745;
+            height: 100%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <h1>AgenWork Database Test</h1>
-    <div id="testResults"></div>
-    <button onclick="runTests()">Run Tests</button>
+    <div class="container">
+        <h1>🗃️ AgenWork Database Test Suite</h1>
+        <p style="text-align: center; color: #666;">
+            Comprehensive testing of the AgenWork database system using DexieJS
+        </p>
 
-    <script src="js/dexie.min.js"></script>
-    <script src="js/database.js"></script>
+        <div class="test-section">
+            <h3>🔧 Database Initialization</h3>
+            <button class="test-button" onclick="testDatabaseInit()">Test Database Initialization</button>
+            <button class="test-button" onclick="testDatabaseStats()">Check Database Stats</button>
+            <div id="initResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>⚙️ Settings Management</h3>
+            <button class="test-button" onclick="testSettings()">Test Settings CRUD</button>
+            <button class="test-button" onclick="testDefaultSettings()">Test Default Settings</button>
+            <div id="settingsResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>💬 Conversation Management</h3>
+            <button class="test-button" onclick="testConversations()">Test Conversation CRUD</button>
+            <button class="test-button" onclick="testConversationArchiving()">Test Archiving</button>
+            <button class="test-button" onclick="testConversationSearch()">Test Search</button>
+            <div id="conversationResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>💭 Message Management</h3>
+            <button class="test-button" onclick="testMessages()">Test Message CRUD</button>
+            <button class="test-button" onclick="testMessageMetadata()">Test Message Metadata</button>
+            <div id="messageResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 Data Import/Export</h3>
+            <button class="test-button" onclick="testDataExport()">Test Data Export</button>
+            <button class="test-button" onclick="testDataImport()">Test Data Import</button>
+            <div id="importExportResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧹 Database Maintenance</h3>
+            <button class="test-button" onclick="testCleanup()">Test Cleanup</button>
+            <button class="test-button" onclick="runAllTests()">Run All Tests</button>
+            <button class="test-button" onclick="resetDatabase()" style="background: #dc3545;">Reset Database</button>
+            <div id="maintenanceResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="progress" id="testProgress" style="display: none;">
+            <div class="progress-bar" id="progressBar" style="width: 0%;">0%</div>
+        </div>
+    </div>
+
+    <script src="../js/dexie.min.js"></script>
+    <script src="../js/database.js"></script>
     <script>
-        async function runTests() {
-            const results = document.getElementById('testResults');
-            results.innerHTML = '<p>Running tests...</p>';
+        let testData = {
+            conversations: [],
+            messages: [],
+            settings: []
+        };
+        
+        function showResults(sectionId, content) {
+            const element = document.getElementById(sectionId);
+            element.style.display = 'block';
+            element.textContent = content;
+        }
+
+        function updateProgress(current, total) {
+            const progressContainer = document.getElementById('testProgress');
+            const progressBar = document.getElementById('progressBar');
             
-            try {
-                // Initialize database
-                console.log('1. Initializing database...');
-                await agenWorkDB.initialize();
-                results.innerHTML += '<p>✓ Database initialized</p>';
-
-                // Test settings
-                console.log('2. Testing settings...');
-                await agenWorkDB.setSetting('testSetting', 'testValue');
-                const setting = await agenWorkDB.getSetting('testSetting');
-                if (setting === 'testValue') {
-                    results.innerHTML += '<p>✓ Settings work</p>';
-                } else {
-                    results.innerHTML += '<p>✗ Settings failed</p>';
-                }
-
-                // Test conversation creation
-                console.log('3. Testing conversation creation...');
-                const conversation = await agenWorkDB.createConversation('Test Conversation', 'prompter');
-                if (conversation && conversation.id) {
-                    results.innerHTML += '<p>✓ Conversation created</p>';
-                    
-                    // Test message adding
-                    console.log('4. Testing message adding...');
-                    const message = await agenWorkDB.addMessage(conversation.id, 'user', 'Hello test', 'prompter');
-                    if (message && message.id) {
-                        results.innerHTML += '<p>✓ Message added</p>';
-                        
-                        // Test conversation loading
-                        console.log('5. Testing conversation loading...');
-                        const loadedConv = await agenWorkDB.getConversation(conversation.id);
-                        if (loadedConv && loadedConv.messages && loadedConv.messages.length > 0) {
-                            results.innerHTML += '<p>✓ Conversation loaded with messages</p>';
-                        } else {
-                            results.innerHTML += '<p>✗ Conversation loading failed</p>';
-                        }
-                    } else {
-                        results.innerHTML += '<p>✗ Message adding failed</p>';
-                    }
-                } else {
-                    results.innerHTML += '<p>✗ Conversation creation failed</p>';
-                }
-
-                // Test stats
-                console.log('6. Testing database stats...');
-                const stats = await agenWorkDB.getDatabaseStats();
-                if (stats && stats.conversations > 0) {
-                    results.innerHTML += '<p>✓ Database stats work</p>';
-                    results.innerHTML += `<p>Stats: ${stats.conversations} conversations, ${stats.messages} messages</p>`;
-                } else {
-                    results.innerHTML += '<p>✗ Database stats failed</p>';
-                }
-
-                results.innerHTML += '<p><strong>All tests completed!</strong></p>';
-                
-            } catch (error) {
-                console.error('Test failed:', error);
-                results.innerHTML += `<p style="color: red;">✗ Test failed: ${error.message}</p>`;
+            if (total > 0) {
+                progressContainer.style.display = 'block';
+                const percentage = Math.round((current / total) * 100);
+                progressBar.style.width = percentage + '%';
+                progressBar.textContent = percentage + '%';
+            } else {
+                progressContainer.style.display = 'none';
             }
         }
+
+        async function testDatabaseInit() {
+            showResults('initResults', 'Testing database initialization...');
+            
+            try {
+                let output = '';
+                
+                // Test initialization
+                output += 'Initializing database...\n';
+                await agenWorkDB.initialize();
+                output += '✅ Database initialized successfully\n';
+                output += `Database object: ${agenWorkDB.db ? 'Created' : 'Failed'}\n`;
+                output += `Is initialized: ${agenWorkDB.isInitialized}\n\n`;
+                
+                // Test table creation
+                output += 'Checking database tables:\n';
+                const tables = ['conversations', 'messages', 'settings'];
+                for (const table of tables) {
+                    try {
+                        const count = await agenWorkDB.db[table].count();
+                        output += `  ✅ ${table}: ${count} records\n`;
+                    } catch (error) {
+                        output += `  ❌ ${table}: Error - ${error.message}\n`;
+                    }
+                }
+                
+                showResults('initResults', output);
+                
+            } catch (error) {
+                showResults('initResults', `❌ Error: ${error.message}\n\nStack: ${error.stack}`);
+            }
+        }
+
+        async function testDatabaseStats() {
+            showResults('initResults', 'Getting database statistics...');
+            
+            try {
+                const stats = await agenWorkDB.getDatabaseStats();
+                
+                let output = 'Database Statistics:\n\n';
+                output += `Conversations: ${stats.conversations}\n`;
+                output += `Archived Conversations: ${stats.archivedConversations}\n`;
+                output += `Messages: ${stats.messages}\n`;
+                output += `Settings: ${stats.settings}\n`;
+                output += `Database Size: ${stats.databaseSize} bytes\n`;
+                
+                if (stats.error) {
+                    output += '\n⚠️ Some errors occurred while gathering stats\n';
+                }
+                
+                showResults('initResults', output);
+                
+            } catch (error) {
+                showResults('initResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testSettings() {
+            showResults('settingsResults', 'Testing settings CRUD operations...');
+            
+            try {
+                let output = 'Settings CRUD Test:\n\n';
+                
+                // Test setting creation
+                output += '1. Creating test settings...\n';
+                const testSettings = [
+                    { key: 'testString', value: 'Hello World' },
+                    { key: 'testNumber', value: 42 },
+                    { key: 'testBoolean', value: true },
+                    { key: 'testObject', value: { nested: 'data', array: [1, 2, 3] } }
+                ];
+                
+                for (const setting of testSettings) {
+                    const success = await agenWorkDB.setSetting(setting.key, setting.value);
+                    output += `  ${setting.key}: ${success ? '✅' : '❌'}\n`;
+                }
+                
+                // Test setting retrieval
+                output += '\n2. Reading test settings...\n';
+                for (const setting of testSettings) {
+                    const value = await agenWorkDB.getSetting(setting.key);
+                    const matches = JSON.stringify(value) === JSON.stringify(setting.value);
+                    output += `  ${setting.key}: ${matches ? '✅' : '❌'} (${JSON.stringify(value)})\n`;
+                }
+                
+                // Test setting update
+                output += '\n3. Updating test settings...\n';
+                const updateSuccess = await agenWorkDB.setSetting('testString', 'Updated Value');
+                const updatedValue = await agenWorkDB.getSetting('testString');
+                output += `  Update: ${updateSuccess && updatedValue === 'Updated Value' ? '✅' : '❌'}\n`;
+                
+                // Test setting deletion
+                output += '\n4. Deleting test settings...\n';
+                for (const setting of testSettings) {
+                    const deleted = await agenWorkDB.deleteSetting(setting.key);
+                    output += `  ${setting.key}: ${deleted ? '✅' : '❌'}\n`;
+                }
+                
+                showResults('settingsResults', output);
+                
+            } catch (error) {
+                showResults('settingsResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testDefaultSettings() {
+            showResults('settingsResults', 'Testing default settings...');
+            
+            try {
+                let output = 'Default Settings Test:\n\n';
+                
+                const expectedDefaults = [
+                    'theme', 'floatingEnabled', 'floatingPosition', 'autoSave', 
+                    'notificationsEnabled', 'aiProvider', 'language', 
+                    'conversationRetention', 'maxMessagesPerConversation'
+                ];
+                
+                output += 'Checking default settings:\n';
+                for (const key of expectedDefaults) {
+                    const value = await agenWorkDB.getSetting(key);
+                    output += `  ${key}: ${value !== null ? '✅' : '❌'} (${JSON.stringify(value)})\n`;
+                }
+                
+                // Test getting all settings
+                output += '\nAll settings:\n';
+                const allSettings = await agenWorkDB.getAllSettings();
+                output += `Total settings count: ${Object.keys(allSettings).length}\n`;
+                
+                showResults('settingsResults', output);
+                
+            } catch (error) {
+                showResults('settingsResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testConversations() {
+            showResults('conversationResults', 'Testing conversation CRUD operations...');
+            
+            try {
+                let output = 'Conversation CRUD Test:\n\n';
+                
+                // Test conversation creation
+                output += '1. Creating test conversations...\n';
+                const agentTypes = ['prompter', 'summarizer', 'translator', 'writer'];
+                const conversations = [];
+                
+                for (let i = 0; i < agentTypes.length; i++) {
+                    const conv = await agenWorkDB.createConversation(
+                        `Test Conversation ${i + 1}`, 
+                        agentTypes[i]
+                    );
+                    conversations.push(conv);
+                    output += `  ${agentTypes[i]}: ${conv && conv.id ? '✅' : '❌'} (ID: ${conv?.id})\n`;
+                }
+                
+                testData.conversations = conversations.filter(c => c && c.id);
+                
+                // Test conversation retrieval
+                output += '\n2. Retrieving conversations...\n';
+                for (const conv of testData.conversations) {
+                    const retrieved = await agenWorkDB.getConversation(conv.id);
+                    const matches = retrieved && retrieved.title === conv.title;
+                    output += `  ID ${conv.id}: ${matches ? '✅' : '❌'}\n`;
+                }
+                
+                // Test getting all conversations
+                output += '\n3. Getting all conversations...\n';
+                const allConversations = await agenWorkDB.getAllConversations();
+                output += `  Total conversations: ${allConversations.length}\n`;
+                
+                // Test conversation update
+                output += '\n4. Updating conversation...\n';
+                if (testData.conversations.length > 0) {
+                    const firstConv = testData.conversations[0];
+                    const updated = await agenWorkDB.updateConversation(firstConv.id, {
+                        title: 'Updated Test Conversation'
+                    });
+                    output += `  Update: ${updated && updated.title === 'Updated Test Conversation' ? '✅' : '❌'}\n`;
+                }
+                
+                showResults('conversationResults', output);
+                
+            } catch (error) {
+                showResults('conversationResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testConversationArchiving() {
+            showResults('conversationResults', 'Testing conversation archiving...');
+            
+            try {
+                let output = 'Conversation Archiving Test:\n\n';
+                
+                // Create a test conversation if none exist
+                if (testData.conversations.length === 0) {
+                    const conv = await agenWorkDB.createConversation('Archive Test', 'prompter');
+                    testData.conversations.push(conv);
+                }
+                
+                const testConv = testData.conversations[0];
+                
+                // Test archiving
+                output += '1. Archiving conversation...\n';
+                const archived = await agenWorkDB.archiveConversation(testConv.id);
+                output += `  Archive result: ${archived ? '✅' : '❌'}\n`;
+                
+                // Verify archiving
+                const archivedConv = await agenWorkDB.getConversation(testConv.id);
+                output += `  Archived status: ${archivedConv.archived ? '✅' : '❌'}\n`;
+                
+                // Test getting conversations without archived
+                output += '\n2. Testing archived filtering...\n';
+                const activeConversations = await agenWorkDB.getAllConversations(false);
+                const allConversations = await agenWorkDB.getAllConversations(true);
+                
+                output += `  Active conversations: ${activeConversations.length}\n`;
+                output += `  All conversations: ${allConversations.length}\n`;
+                output += `  Filtering works: ${allConversations.length > activeConversations.length ? '✅' : '⚠️'}\n`;
+                
+                showResults('conversationResults', output);
+                
+            } catch (error) {
+                showResults('conversationResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testConversationSearch() {
+            showResults('conversationResults', 'Testing conversation search...');
+            
+            try {
+                let output = 'Conversation Search Test:\n\n';
+                
+                // Create test conversations with searchable titles
+                const searchTestConvs = [
+                    'AI Discussion About Machine Learning',
+                    'JavaScript Tutorial Notes',
+                    'Database Design Patterns'
+                ];
+                
+                output += '1. Creating searchable conversations...\n';
+                for (const title of searchTestConvs) {
+                    const conv = await agenWorkDB.createConversation(title, 'prompter');
+                    output += `  "${title}": ${conv ? '✅' : '❌'}\n`;
+                }
+                
+                // Test search functionality
+                output += '\n2. Testing search queries...\n';
+                const searchQueries = [
+                    { query: 'AI', expected: 1 },
+                    { query: 'JavaScript', expected: 1 },
+                    { query: 'Database', expected: 1 },
+                    { query: 'Tutorial', expected: 1 },
+                    { query: 'NonExistent', expected: 0 }
+                ];
+                
+                for (const { query, expected } of searchQueries) {
+                    const results = await agenWorkDB.searchConversations(query);
+                    output += `  "${query}": ${results.length} results ${results.length === expected ? '✅' : '❌'}\n`;
+                }
+                
+                // Test getting conversations by agent type
+                output += '\n3. Testing filter by agent type...\n';
+                const prompterConvs = await agenWorkDB.getConversationsByAgent('prompter');
+                output += `  Prompter conversations: ${prompterConvs.length}\n`;
+                
+                showResults('conversationResults', output);
+                
+            } catch (error) {
+                showResults('conversationResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testMessages() {
+            showResults('messageResults', 'Testing message CRUD operations...');
+            
+            try {
+                let output = 'Message CRUD Test:\n\n';
+                
+                // Create a test conversation if none exist
+                let testConv = testData.conversations.length > 0 ? testData.conversations[0] : null;
+                if (!testConv) {
+                    testConv = await agenWorkDB.createConversation('Message Test Conversation', 'prompter');
+                    testData.conversations.push(testConv);
+                }
+                
+                // Test message creation
+                output += '1. Creating test messages...\n';
+                const testMessages = [
+                    { role: 'user', content: 'Hello, how are you?', agentType: 'prompter' },
+                    { role: 'assistant', content: 'I am doing well, thank you!', agentType: 'prompter' },
+                    { role: 'user', content: 'Can you help me with a task?', agentType: 'prompter' },
+                    { role: 'assistant', content: 'Of course! What do you need help with?', agentType: 'prompter' }
+                ];
+                
+                const messages = [];
+                for (const msgData of testMessages) {
+                    const message = await agenWorkDB.addMessage(
+                        testConv.id, 
+                        msgData.role, 
+                        msgData.content, 
+                        msgData.agentType
+                    );
+                    messages.push(message);
+                    output += `  ${msgData.role}: ${message && message.id ? '✅' : '❌'}\n`;
+                }
+                
+                testData.messages = messages.filter(m => m && m.id);
+                
+                // Test message retrieval
+                output += '\n2. Retrieving messages...\n';
+                const retrievedMessages = await agenWorkDB.getMessages(testConv.id);
+                output += `  Retrieved count: ${retrievedMessages.length}\n`;
+                output += `  Expected count: ${testMessages.length}\n`;
+                output += `  Match: ${retrievedMessages.length === testMessages.length ? '✅' : '❌'}\n`;
+                
+                // Test message ordering
+                output += '\n3. Testing message ordering...\n';
+                const isOrdered = retrievedMessages.every((msg, index) => {
+                    if (index === 0) return true;
+                    return new Date(msg.timestamp) >= new Date(retrievedMessages[index - 1].timestamp);
+                });
+                output += `  Chronological order: ${isOrdered ? '✅' : '❌'}\n`;
+                
+                // Test conversation with messages
+                output += '\n4. Testing conversation with messages...\n';
+                const convWithMessages = await agenWorkDB.getConversation(testConv.id);
+                output += `  Messages loaded: ${convWithMessages.messages ? convWithMessages.messages.length : 0}\n`;
+                output += `  Expected: ${testMessages.length}\n`;
+                output += `  Match: ${convWithMessages.messages && convWithMessages.messages.length === testMessages.length ? '✅' : '❌'}\n`;
+                
+                showResults('messageResults', output);
+                
+            } catch (error) {
+                showResults('messageResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testMessageMetadata() {
+            showResults('messageResults', 'Testing message metadata...');
+            
+            try {
+                let output = 'Message Metadata Test:\n\n';
+                
+                // Create a test conversation if none exist
+                let testConv = testData.conversations.length > 0 ? testData.conversations[0] : null;
+                if (!testConv) {
+                    testConv = await agenWorkDB.createConversation('Metadata Test', 'prompter');
+                    testData.conversations.push(testConv);
+                }
+                
+                // Test message with metadata
+                output += '1. Creating message with metadata...\n';
+                const metadata = {
+                    sentiment: 'positive',
+                    language: 'en',
+                    processingTime: 150,
+                    aiModel: 'gemini-nano',
+                    tags: ['test', 'metadata']
+                };
+                
+                const message = await agenWorkDB.addMessage(
+                    testConv.id,
+                    'user',
+                    'This is a test message with metadata',
+                    'prompter',
+                    metadata
+                );
+                
+                output += `  Message created: ${message && message.id ? '✅' : '❌'}\n`;
+                output += `  Metadata stored: ${message && message.metadata ? '✅' : '❌'}\n`;
+                
+                // Verify metadata retrieval
+                output += '\n2. Verifying metadata retrieval...\n';
+                const retrievedMessage = await agenWorkDB.db.messages.get(message.id);
+                const metadataMatches = JSON.stringify(retrievedMessage.metadata) === JSON.stringify(metadata);
+                output += `  Metadata matches: ${metadataMatches ? '✅' : '❌'}\n`;
+                
+                if (retrievedMessage.metadata) {
+                    output += `  Sentiment: ${retrievedMessage.metadata.sentiment}\n`;
+                    output += `  Language: ${retrievedMessage.metadata.language}\n`;
+                    output += `  Processing time: ${retrievedMessage.metadata.processingTime}ms\n`;
+                    output += `  AI Model: ${retrievedMessage.metadata.aiModel}\n`;
+                    output += `  Tags: ${retrievedMessage.metadata.tags?.join(', ')}\n`;
+                }
+                
+                showResults('messageResults', output);
+                
+            } catch (error) {
+                showResults('messageResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testDataExport() {
+            showResults('importExportResults', 'Testing data export...');
+            
+            try {
+                let output = 'Data Export Test:\n\n';
+                
+                // Export all data
+                output += '1. Exporting database...\n';
+                const exportedData = await agenWorkDB.exportData();
+                
+                output += `  Export successful: ${exportedData ? '✅' : '❌'}\n`;
+                output += `  Export date: ${exportedData.exportDate}\n`;
+                output += `  Version: ${exportedData.version}\n`;
+                output += `  Conversations: ${exportedData.conversations?.length || 0}\n`;
+                output += `  Settings: ${Object.keys(exportedData.settings || {}).length}\n`;
+                
+                // Verify export structure
+                output += '\n2. Verifying export structure...\n';
+                const hasRequiredFields = exportedData.conversations && 
+                                          exportedData.settings && 
+                                          exportedData.exportDate && 
+                                          exportedData.version;
+                output += `  Required fields: ${hasRequiredFields ? '✅' : '❌'}\n`;
+                
+                // Check if conversations have messages
+                if (exportedData.conversations && exportedData.conversations.length > 0) {
+                    const firstConv = exportedData.conversations[0];
+                    output += `  First conversation has messages: ${firstConv.messages ? '✅' : '❌'}\n`;
+                    output += `  Message count: ${firstConv.messages?.length || 0}\n`;
+                }
+                
+                // Store export data for import test
+                window.testExportData = exportedData;
+                
+                showResults('importExportResults', output);
+                
+            } catch (error) {
+                showResults('importExportResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testDataImport() {
+            showResults('importExportResults', 'Testing data import...');
+            
+            try {
+                let output = 'Data Import Test:\n\n';
+                
+                // Check if we have export data
+                if (!window.testExportData) {
+                    output += '❌ No export data available. Run export test first.\n';
+                    showResults('importExportResults', output);
+                    return;
+                }
+                
+                // Get stats before import
+                const statsBefore = await agenWorkDB.getDatabaseStats();
+                output += `Before import: ${statsBefore.conversations} conversations, ${statsBefore.messages} messages\n\n`;
+                
+                // Import data
+                output += '1. Importing data...\n';
+                await agenWorkDB.importData(window.testExportData);
+                output += '  Import completed: ✅\n';
+                
+                // Get stats after import
+                const statsAfter = await agenWorkDB.getDatabaseStats();
+                output += `\n2. After import: ${statsAfter.conversations} conversations, ${statsAfter.messages} messages\n`;
+                
+                // Verify import
+                output += '\n3. Verifying import...\n';
+                const allConversations = await agenWorkDB.getAllConversations(true);
+                const allSettings = await agenWorkDB.getAllSettings();
+                
+                output += `  Conversations imported: ${allConversations.length}\n`;
+                output += `  Settings imported: ${Object.keys(allSettings).length}\n`;
+                
+                // Check if data matches export
+                const exportedConvCount = window.testExportData.conversations?.length || 0;
+                const exportedSettingsCount = Object.keys(window.testExportData.settings || {}).length;
+                
+                output += `  Conversation count matches: ${allConversations.length === exportedConvCount ? '✅' : '❌'}\n`;
+                output += `  Settings count matches: ${Object.keys(allSettings).length === exportedSettingsCount ? '✅' : '❌'}\n`;
+                
+                showResults('importExportResults', output);
+                
+            } catch (error) {
+                showResults('importExportResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function testCleanup() {
+            showResults('maintenanceResults', 'Testing database cleanup...');
+            
+            try {
+                let output = 'Database Cleanup Test:\n\n';
+                
+                // Get stats before cleanup
+                const statsBefore = await agenWorkDB.getDatabaseStats();
+                output += `Before cleanup: ${statsBefore.conversations} conversations\n\n`;
+                
+                // Test cleanup (with a very short retention period for testing)
+                output += '1. Setting short retention period...\n';
+                await agenWorkDB.setSetting('conversationRetention', -1); // Negative to clean everything
+                
+                output += '2. Running cleanup...\n';
+                const cleanedCount = await agenWorkDB.cleanupOldConversations();
+                output += `  Cleaned conversations: ${cleanedCount}\n`;
+                
+                // Get stats after cleanup
+                const statsAfter = await agenWorkDB.getDatabaseStats();
+                output += `\n3. After cleanup: ${statsAfter.conversations} conversations\n`;
+                
+                // Reset retention period
+                await agenWorkDB.setSetting('conversationRetention', 30);
+                output += '\nRetention period reset to 30 days ✅\n';
+                
+                showResults('maintenanceResults', output);
+                
+            } catch (error) {
+                showResults('maintenanceResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function resetDatabase() {
+            const confirm = window.confirm('Are you sure you want to reset the database? This will delete all data!');
+            if (!confirm) return;
+            
+            showResults('maintenanceResults', 'Resetting database...');
+            
+            try {
+                let output = 'Database Reset:\n\n';
+                
+                // Clear all tables
+                output += 'Clearing all tables...\n';
+                await agenWorkDB.db.conversations.clear();
+                await agenWorkDB.db.messages.clear();
+                await agenWorkDB.db.settings.clear();
+                
+                // Reinitialize default settings
+                await agenWorkDB.initializeDefaultSettings();
+                
+                output += '✅ Database reset completed\n';
+                output += '✅ Default settings restored\n';
+                
+                // Clear test data
+                testData = { conversations: [], messages: [], settings: [] };
+                
+                // Get final stats
+                const stats = await agenWorkDB.getDatabaseStats();
+                output += `\nFinal stats: ${stats.conversations} conversations, ${stats.messages} messages, ${stats.settings} settings\n`;
+                
+                showResults('maintenanceResults', output);
+                
+            } catch (error) {
+                showResults('maintenanceResults', `❌ Error: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            const tests = [
+                { name: 'Database Initialization', func: testDatabaseInit },
+                { name: 'Settings CRUD', func: testSettings },
+                { name: 'Default Settings', func: testDefaultSettings },
+                { name: 'Conversations CRUD', func: testConversations },
+                { name: 'Conversation Archiving', func: testConversationArchiving },
+                { name: 'Conversation Search', func: testConversationSearch },
+                { name: 'Messages CRUD', func: testMessages },
+                { name: 'Message Metadata', func: testMessageMetadata },
+                { name: 'Data Export', func: testDataExport },
+                { name: 'Data Import', func: testDataImport },
+                { name: 'Database Stats', func: testDatabaseStats }
+            ];
+            
+            showResults('maintenanceResults', 'Running all tests...\n');
+            
+            let output = 'Running All Tests:\n\n';
+            let passed = 0;
+            let failed = 0;
+            
+            for (let i = 0; i < tests.length; i++) {
+                const test = tests[i];
+                updateProgress(i, tests.length);
+                
+                try {
+                    output += `${i + 1}. ${test.name}... `;
+                    await test.func();
+                    output += '✅ PASSED\n';
+                    passed++;
+                } catch (error) {
+                    output += `❌ FAILED (${error.message})\n`;
+                    failed++;
+                }
+                
+                // Small delay to show progress
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            updateProgress(tests.length, tests.length);
+            
+            output += `\nTest Summary:\n`;
+            output += `✅ Passed: ${passed}\n`;
+            output += `❌ Failed: ${failed}\n`;
+            output += `📊 Success Rate: ${Math.round((passed / tests.length) * 100)}%\n`;
+            
+            showResults('maintenanceResults', output);
+            
+            // Hide progress bar after completion
+            setTimeout(() => updateProgress(0, 0), 2000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            console.log('Database Test Suite loaded');
+            
+            // Initialize database automatically
+            try {
+                await agenWorkDB.initialize();
+                console.log('Database initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize database:', error);
+            }
+        });
     </script>
 </body>
 </html>

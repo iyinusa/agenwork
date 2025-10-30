@@ -17,6 +17,11 @@ chrome.runtime.onInstalled.addListener((details) => {
     }
   });
   
+  // Initialize AI language setting in sync storage (required for Summarizer API)
+  chrome.storage.sync.set({
+    aiLanguage: 'en' // Default to English (supported by Chrome Built-in AI APIs)
+  });
+  
   // Inject floating icon into all existing tabs if enabled
   if (details.reason === 'install') {
     chrome.tabs.query({}, (tabs) => {
@@ -99,6 +104,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log('Cannot open popup programmatically, falling back to inline interface');
         sendResponse({ success: false, fallback: true });
       }
+      break;
+      
+    case 'AI_PROGRESS':
+      // Handle AI progress updates from agents
+      console.log(`AI Agent ${message.agentType} progress: ${message.progress}%`);
+      
+      // Forward progress to popup if it's open
+      try {
+        chrome.runtime.sendMessage({
+          type: 'AI_PROGRESS',
+          agentType: message.agentType,
+          progress: message.progress
+        }).catch(() => {
+          // Ignore if popup is not open
+        });
+      } catch (error) {
+        // Popup is not open, ignore
+      }
+      
+      sendResponse({ success: true });
       break;
       
     default:

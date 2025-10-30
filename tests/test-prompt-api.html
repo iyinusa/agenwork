@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrome Prompt API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .success { background-color: #e8f5e8; border-color: #4caf50; }
+        .error { background-color: #ffeaea; border-color: #f44336; }
+        .warning { background-color: #fff3cd; border-color: #ffc107; }
+        .info { background-color: #e3f2fd; border-color: #2196f3; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .results {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chrome Prompt API Test</h1>
+    <p>This page tests the Chrome Built-in Prompt API (LanguageModel) functionality.</p>
+    
+    <div class="test-section info">
+        <h3>Quick Access Links</h3>
+        <p>Open these Chrome internal pages to configure Built-in AI:</p>
+        <ul>
+            <li><a href="chrome://flags/" target="_blank">chrome://flags/</a> - Enable AI feature flags</li>
+            <li><a href="chrome://on-device-internals/" target="_blank">chrome://on-device-internals/</a> - Check model status</li>
+            <li><a href="chrome://settings/aiLanguageModel" target="_blank">chrome://settings/aiLanguageModel</a> - Language Model settings</li>
+            <li><a href="chrome://version/" target="_blank">chrome://version/</a> - Check Chrome version</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>🔍 Environment Check</h3>
+        <button onclick="checkEnvironment()">Check Environment</button>
+        <button onclick="checkChromeFlags()">Check Chrome Flags</button>
+        <button onclick="checkSystemRequirements()">Check System Requirements</button>
+        <div id="environmentResults" class="results" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🧠 Direct LanguageModel API Test</h3>
+        <button onclick="testLanguageModelDirect()">Test Direct API</button>
+        <div id="directResults" class="results" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🤖 AgenWork Prompt Agent Test</h3>
+        <button onclick="testPromptAgent()">Test Prompt Agent</button>
+        <div id="agentResults" class="results" style="display: none;"></div>
+    </div>
+
+        <div class="test-section">
+            <h3>🎯 Intent Detection Test</h3>
+            <button onclick="testIntentDetection()">Test Intent Detection</button>
+            <div id="intentResults" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="test-section warning">
+            <h3>🛠️ Troubleshooting Guide</h3>
+            <p><strong>If you see "LanguageModel API not supported" errors:</strong></p>
+            <ol>
+                <li><strong>Check Chrome Version:</strong> You need Chrome 138 or later</li>
+                <li><strong>Enable Chrome Flags:</strong> Go to <code>chrome://flags/</code> and enable:
+                    <ul>
+                        <li>"Enables optimization guide on device"</li>
+                        <li>"Prompt API for Gemini Nano"</li>
+                        <li>"Summarization API for Gemini Nano"</li>
+                    </ul>
+                </li>
+                <li><strong>Restart Chrome:</strong> Flags require a browser restart</li>
+                <li><strong>Check System Requirements:</strong> Need 16GB+ RAM and 22GB+ storage</li>
+                <li><strong>Verify Model Status:</strong> Visit <code>chrome://on-device-internals/</code></li>
+                <li><strong>Try Origin Trial:</strong> Go to <code>chrome://settings/aiLanguageModel</code></li>
+            </ol>
+            <p><strong>Still not working?</strong> Chrome Built-in AI is still experimental and may not be available on all systems.</p>
+        </div>    <!-- Load all AI agent modules -->
+    <script src="../js/ai-agents/utils.js"></script>
+    <script src="../js/ai-agents/chrome-integration.js"></script>
+    <script src="../js/ai-agents/summarizer.js"></script>
+    <script src="../js/ai-agents/translator.js"></script>
+    <script src="../js/ai-agents/prompter.js"></script>
+    <script src="../js/ai-agents/writer.js"></script>
+    <script src="../js/ai-agents/core.js"></script>
+    <script src="../js/ai-agents/index.js"></script>
+
+    <script>
+        function showResults(sectionId, content, className = '') {
+            const element = document.getElementById(sectionId);
+            element.style.display = 'block';
+            element.textContent = content;
+            if (className) {
+                element.className = `results ${className}`;
+            }
+        }
+
+        async function checkEnvironment() {
+            showResults('environmentResults', 'Checking environment...');
+            
+            try {
+                let output = 'Chrome Built-in AI Environment Check:\n\n';
+                
+                // Basic browser info
+                output += `User Agent: ${navigator.userAgent}\n`;
+                const chromeVersion = ChromeIntegration.getChromeVersion();
+                output += `Chrome Version: ${chromeVersion || 'Not Chrome/Unknown'}\n`;
+                output += `Version Supported: ${ChromeIntegration.isChromeVersionSupported() ? '✅' : '❌'}\n`;
+                output += `User Activation: ${navigator.userActivation?.isActive ? '✅' : '❌'}\n\n`;
+                
+                // Check if we're in Chrome
+                const isChrome = navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Edg');
+                output += `Is Chrome Browser: ${isChrome ? '✅' : '❌'}\n`;
+                
+                // Check version requirements
+                if (chromeVersion && chromeVersion < 138) {
+                    output += `❌ Chrome version ${chromeVersion} is too old. Chrome 138+ required.\n`;
+                    output += `Please update Chrome to the latest version.\n\n`;
+                }
+                
+                // Check if LanguageModel exists
+                output += `LanguageModel in window: ${('LanguageModel' in window) ? '✅' : '❌'}\n`;
+                
+                // Check all AI APIs
+                const aiAPIs = ['Summarizer', 'LanguageModel', 'Translator', 'Writer'];
+                output += '\nAI APIs Detection:\n';
+                for (const api of aiAPIs) {
+                    const exists = api in window;
+                    const type = exists ? typeof window[api] : 'undefined';
+                    output += `  ${api}: ${exists ? '✅' : '❌'} (${type})\n`;
+                }
+                
+                if ('LanguageModel' in window) {
+                    try {
+                        // Get model parameters first to use in availability check
+                        let modelParams;
+                        try {
+                            modelParams = await window.LanguageModel.params();
+                            output += `Model Parameters:\n${JSON.stringify(modelParams, null, 2)}\n\n`;
+                        } catch (paramError) {
+                            output += `Could not get model parameters: ${paramError.message}\n`;
+                            modelParams = {defaultTopK: 3, defaultTemperature: 1};
+                        }
+                        
+                        // Check availability with proper options (matching what create() will use)
+                        const options = {
+                            temperature: modelParams.defaultTemperature || 1,
+                            topK: modelParams.defaultTopK || 3
+                        };
+                        
+                        const availability = await window.LanguageModel.availability(options);
+                        output += `LanguageModel Availability: ${availability}\n`;
+                        
+                        if (availability !== 'no') {
+                            if (availability === 'readily') {
+                                output += '✅ Model is ready for immediate use!\n';
+                            } else if (availability === 'after-download') {
+                                output += '⚠️ Model needs to be downloaded first (may take time)\n';
+                                output += 'User interaction will be required for download.\n';
+                            }
+                            output += '\n✅ Prompt API is available for testing!';
+                            showResults('environmentResults', output, 'success');
+                        } else {
+                            output += '\n❌ Prompt API not available on this device.\n';
+                            output += 'This may be due to:\n';
+                            output += '- Insufficient system resources (need 16GB+ RAM, 22GB+ storage)\n';
+                            output += '- Model not supported on this hardware\n';
+                            output += '- Chrome flags not enabled\n';
+                            output += '- Device does not meet minimum requirements\n';
+                            showResults('environmentResults', output, 'error');
+                        }
+                    } catch (error) {
+                        output += `\nError checking availability: ${error.message}\n`;
+                        output += `Error name: ${error.name}\n`;
+                        
+                        if (error.name === 'NotSupportedError') {
+                            output += '\nThis error typically means:\n';
+                            output += '- Chrome Built-in AI is not enabled\n';
+                            output += '- Required Chrome flags are not set\n';
+                            output += '- API is not available in your Chrome build\n';
+                        }
+                        
+                        showResults('environmentResults', output, 'error');
+                    }
+                } else {
+                    output += '\n❌ LanguageModel API not found.\n\n';
+                    output += 'This could be because:\n';
+                    output += '1. Chrome version is older than 138\n';
+                    output += '2. Chrome Built-in AI features are not enabled\n';
+                    output += '3. You are not using Chrome browser\n';
+                    output += '4. Chrome flags need to be enabled\n\n';
+                    output += 'To enable Chrome Built-in AI:\n';
+                    output += '1. Go to chrome://flags/\n';
+                    output += '2. Search for "Built-in AI" or "Gemini Nano"\n';
+                    output += '3. Enable relevant flags and restart Chrome\n';
+                    output += '4. Visit chrome://on-device-internals/ to check model status\n';
+                    showResults('environmentResults', output, 'error');
+                }
+                
+            } catch (error) {
+                showResults('environmentResults', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLanguageModelDirect() {
+            showResults('directResults', 'Testing LanguageModel API directly...');
+            
+            try {
+                if (!('LanguageModel' in window)) {
+                    let output = '❌ LanguageModel API not found in window object.\n\n';
+                    output += 'This means Chrome Built-in AI is not available in your browser.\n\n';
+                    output += 'To fix this:\n';
+                    output += '1. Ensure you are using Chrome 138 or later\n';
+                    output += '2. Enable Chrome Built-in AI flags\n';
+                    output += '3. Check system requirements (16GB+ RAM, 22GB+ storage)\n\n';
+                    output += 'Click "Check Chrome Flags" above for detailed instructions.';
+                    showResults('directResults', output, 'error');
+                    return;
+                }
+                
+                let output = 'Testing direct LanguageModel API...\n\n';
+                
+                // Get model parameters first
+                let modelParams;
+                try {
+                    modelParams = await window.LanguageModel.params();
+                    output += `Model Parameters:\n${JSON.stringify(modelParams, null, 2)}\n\n`;
+                } catch (paramError) {
+                    output += `Could not get model parameters: ${paramError.message}\n`;
+                    modelParams = {defaultTopK: 3, defaultTemperature: 1};
+                }
+                
+                // Check availability with proper options
+                const options = {
+                    temperature: modelParams.defaultTemperature || 1,
+                    topK: modelParams.defaultTopK || 3,
+                    monitor: (m) => {
+                        m.addEventListener('downloadprogress', (e) => {
+                            const progress = (e.loaded * 100).toFixed(1);
+                            console.log(`Download progress: ${progress}%`);
+                            output += `Download progress: ${progress}%\n`;
+                        });
+                    }
+                };
+                
+                const availability = await window.LanguageModel.availability(options);
+                output += `Availability Status: ${availability}\n\n`;
+                
+                if (availability === 'no') {
+                    output += '❌ LanguageModel not available on this device.\n\n';
+                    output += 'Possible reasons:\n';
+                    output += '• System does not meet hardware requirements\n';
+                    output += '• Gemini Nano model not supported on this hardware\n';
+                    output += '• Chrome flags not properly enabled\n\n';
+                    output += 'Visit chrome://on-device-internals/ to check model status.';
+                    showResults('directResults', output, 'error');
+                    return;
+                }
+                
+                if (availability === 'after-download') {
+                    output += '⚠️ Model needs to be downloaded first...\n';
+                    output += 'This may take several minutes on first use.\n';
+                    output += 'User interaction is required for download.\n\n';
+                    
+                    // Check user activation
+                    if (!navigator.userActivation || !navigator.userActivation.isActive) {
+                        output += '❌ User interaction required. Please click this button again.\n';
+                        showResults('directResults', output, 'warning');
+                        return;
+                    }
+                }
+                
+                // Create session with the same options used for availability check
+                output += 'Creating LanguageModel session...\n';
+                const session = await window.LanguageModel.create(options);
+                
+                output += '✅ Session created successfully!\n\n';
+                
+                // Test basic prompting
+                const testPrompt = 'Hello! Please confirm that you are working correctly and provide a brief explanation of what you are.';
+                output += `Sending test prompt: "${testPrompt}"\n\n`;
+                
+                const startTime = Date.now();
+                const response = await session.prompt(testPrompt);
+                const endTime = Date.now();
+                
+                output += `Response (${endTime - startTime}ms):\n${response}\n\n`;
+                output += '✅ Direct API test successful!';
+                
+                // Clean up
+                session.destroy();
+                
+                showResults('directResults', output, 'success');
+                
+            } catch (error) {
+                let output = `❌ Error: ${error.message}\n\n`;
+                
+                if (error.name === 'NotSupportedError') {
+                    output += 'The LanguageModel API is not supported.\n';
+                    output += 'This usually means Chrome Built-in AI is not enabled.\n\n';
+                } else if (error.name === 'InvalidStateError') {
+                    output += 'The API is in an invalid state.\n';
+                    output += 'Try refreshing the page or restarting Chrome.\n\n';
+                } else if (error.message.includes('quota')) {
+                    output += 'Storage quota exceeded.\n';
+                    output += 'Free up disk space and try again.\n\n';
+                }
+                
+                output += `Error Type: ${error.name}\n`;
+                output += `Stack: ${error.stack}`;
+                
+                showResults('directResults', output, 'error');
+            }
+        }
+
+        async function testPromptAgent() {
+            showResults('agentResults', 'Testing AgenWork Prompt Agent...');
+            
+            try {
+                // First check if LanguageModel is available
+                if (!('LanguageModel' in window)) {
+                    let output = '❌ Cannot test Prompt Agent - LanguageModel API not found.\n\n';
+                    output += 'This means Chrome Built-in AI is not available.\n\n';
+                    output += 'Quick fixes to try:\n';
+                    output += '1. Update Chrome to version 138+\n';
+                    output += '2. Enable Chrome flags (click "Check Chrome Flags" button)\n';
+                    output += '3. Visit chrome://on-device-internals/ to check model status\n';
+                    output += '4. Ensure you meet system requirements (16GB+ RAM, 22GB+ storage)\n\n';
+                    output += 'Click "Check Chrome Flags" for detailed setup instructions.';
+                    showResults('agentResults', output, 'error');
+                    return;
+                }
+                
+                // Wait for modules to load
+                if (typeof PrompterAgent === 'undefined') {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                const prompter = new PrompterAgent();
+                let output = 'Prompt Agent Test:\n\n';
+                
+                // Check capabilities first
+                output += 'Checking capabilities...\n';
+                const capabilities = await prompter.getCapabilities();
+                output += `Supported: ${capabilities.supported ? '✅' : '❌'}\n`;
+                output += `Available: ${capabilities.available ? '✅' : '❌'}\n`;
+                output += `Ready: ${capabilities.ready ? '✅' : '❌'}\n`;
+                output += `Status: ${capabilities.availability}\n\n`;
+                
+                if (!capabilities.supported) {
+                    throw new Error('LanguageModel API not supported');
+                }
+                
+                if (!capabilities.available) {
+                    throw new Error('LanguageModel API not available on this device');
+                }
+                
+                // Test creating prompter
+                output += 'Creating prompter session...\n';
+                
+                if (capabilities.availability === 'after-download') {
+                    output += '⚠️ Model download required - this may take time...\n';
+                    
+                    // Check user activation
+                    if (!navigator.userActivation || !navigator.userActivation.isActive) {
+                        throw new Error('User interaction required for model download. Please click this button again.');
+                    }
+                }
+                
+                await prompter.createPrompter();
+                output += '✅ Prompter created successfully!\n\n';
+                
+                // Test simple prompt
+                const simplePrompt = 'Hello! Please respond briefly to confirm you are working.';
+                output += `Simple Test: "${simplePrompt}"\n`;
+                const simpleResponse = await prompter.processPrompt(simplePrompt);
+                output += `Response: ${simpleResponse}\n\n`;
+                
+                // Test research query
+                const query = 'What are the main benefits of using Chrome Built-in AI APIs?';
+                output += `Research Query: "${query}"\n\n`;
+                output += 'Processing query with Gemini Nano...\n';
+                
+                const startTime = Date.now();
+                const response = await prompter.handleResearchQuery(query);
+                const endTime = Date.now();
+                
+                output += `Response (${endTime - startTime}ms):\n${response}\n\n`;
+                output += '✅ Prompt Agent test successful!';
+                
+                showResults('agentResults', output, 'success');
+                
+            } catch (error) {
+                let output = `❌ Error: ${error.message}\n\n`;
+                
+                if (error.message.includes('not supported')) {
+                    output += 'The LanguageModel API is not supported in your current setup.\n\n';
+                    output += 'This usually means:\n';
+                    output += '• Chrome version is too old (need 138+)\n';
+                    output += '• Chrome Built-in AI flags are not enabled\n';
+                    output += '• System requirements not met\n\n';
+                    output += 'Click "Check Chrome Flags" for setup instructions.\n\n';
+                } else if (error.message.includes('not available')) {
+                    output += 'The LanguageModel API is supported but not available.\n\n';
+                    output += 'This usually means:\n';
+                    output += '• Gemini Nano model is not installed\n';
+                    output += '• Insufficient system resources\n';
+                    output += '• Model download failed or was interrupted\n\n';
+                    output += 'Visit chrome://on-device-internals/ to check model status.\n\n';
+                } else if (error.message.includes('User interaction required')) {
+                    output += 'Model download requires user interaction.\n\n';
+                    output += 'Please click the test button again to trigger the download.\n\n';
+                } else if (error.message.includes('Permission denied')) {
+                    output += 'Permission denied for model access.\n\n';
+                    output += 'Try clicking the test button again or refreshing the page.\n\n';
+                }
+                
+                output += `Error Type: ${error.name || 'Unknown'}\n`;
+                output += `Stack: ${error.stack}`;
+                showResults('agentResults', output, 'error');
+            }
+        }
+
+        async function testIntentDetection() {
+            showResults('intentResults', 'Testing AI-powered Intent Detection...');
+            
+            try {
+                // Wait for modules to load
+                if (typeof PrompterAgent === 'undefined') {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                const prompter = new PrompterAgent();
+                let output = 'Intent Detection Test:\n\n';
+                
+                const testMessages = [
+                    'Please summarize this page for me',
+                    'Can you help me write a professional email?',
+                    'Translate this text to Spanish please',
+                    'I need to research information about machine learning',
+                    'What does this article say about AI technology?'
+                ];
+                
+                for (const message of testMessages) {
+                    try {
+                        output += `Message: "${message}"\n`;
+                        
+                        const startTime = Date.now();
+                        const intent = await prompter.detectIntentWithAI(message);
+                        const endTime = Date.now();
+                        
+                        output += `  Primary Intent: ${intent.primary}\n`;
+                        output += `  Confidence: ${(intent.confidence * 100).toFixed(1)}%\n`;
+                        output += `  AI Powered: ${intent.aiPowered ? '✅ Yes' : '❌ No (fallback)'}\n`;
+                        output += `  Time: ${endTime - startTime}ms\n`;
+                        output += `  Reasoning: ${intent.reasoning}\n\n`;
+                        
+                    } catch (error) {
+                        output += `  ❌ Error: ${error.message}\n\n`;
+                    }
+                }
+                
+                showResults('intentResults', output, 'success');
+                
+            } catch (error) {
+                showResults('intentResults', `❌ Error: ${error.message}\n\nStack: ${error.stack}`, 'error');
+            }
+        }
+
+        async function checkChromeFlags() {
+            showResults('environmentResults', 'Chrome Flags and Setup Guide...');
+            
+            let output = 'Chrome Built-in AI Setup Guide:\n\n';
+            
+            const chromeVersion = ChromeIntegration.getChromeVersion();
+            const isChrome = navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Edg');
+            
+            if (!isChrome) {
+                output += '❌ You are not using Chrome browser.\n';
+                output += 'Chrome Built-in AI APIs only work in Google Chrome.\n\n';
+                output += 'Please:\n';
+                output += '1. Download and install Google Chrome from chrome.google.com\n';
+                output += '2. Switch to Chrome to use AI features\n';
+                showResults('environmentResults', output, 'error');
+                return;
+            }
+            
+            if (!chromeVersion || chromeVersion < 138) {
+                output += `❌ Chrome version ${chromeVersion || 'unknown'} is too old.\n`;
+                output += 'Chrome Built-in AI requires Chrome 138 or later.\n\n';
+                output += 'To update Chrome:\n';
+                output += '1. Click Chrome menu (⋮) → Help → About Google Chrome\n';
+                output += '2. Chrome will automatically check for and install updates\n';
+                output += '3. Restart Chrome after update completes\n\n';
+            } else {
+                output += `✅ Chrome version ${chromeVersion} supports Built-in AI.\n\n`;
+            }
+            
+            output += 'Chrome Flags to Enable:\n\n';
+            output += '1. Open chrome://flags/ in a new tab\n';
+            output += '2. Search for and enable these flags:\n';
+            output += '   • "Enables optimization guide on device"\n';
+            output += '   • "Prompt API for Gemini Nano"\n';
+            output += '   • "Summarization API for Gemini Nano"\n';
+            output += '   • "Writer API for Gemini Nano"\n';
+            output += '   • "Translation API for Gemini Nano"\n';
+            output += '3. Restart Chrome\n';
+            output += '4. Visit chrome://on-device-internals/ to check model status\n\n';
+            
+            output += 'Alternative - Origin Trial:\n';
+            output += '1. Visit chrome://settings/aiLanguageModel\n';
+            output += '2. Enable "Try new features for language models"\n';
+            output += '3. Restart Chrome\n\n';
+            
+            output += 'After enabling flags, reload this page and test again.';
+            
+            showResults('environmentResults', output, 'info');
+        }
+
+        async function checkSystemRequirements() {
+            showResults('environmentResults', 'Checking system requirements...');
+            
+            let output = 'System Requirements for Chrome Built-in AI:\n\n';
+            
+            // Memory information (if available)
+            if (navigator.deviceMemory) {
+                const memoryGB = navigator.deviceMemory;
+                output += `Device Memory: ${memoryGB} GB `;
+                if (memoryGB >= 16) {
+                    output += '✅\n';
+                } else {
+                    output += '❌ (Need 16+ GB)\n';
+                }
+            } else {
+                output += 'Device Memory: Unknown (Need 16+ GB RAM)\n';
+            }
+            
+            // Storage estimation
+            if ('storage' in navigator && 'estimate' in navigator.storage) {
+                try {
+                    const estimate = await navigator.storage.estimate();
+                    const availableGB = Math.round((estimate.quota - estimate.usage) / (1024 * 1024 * 1024));
+                    output += `Available Storage: ~${availableGB} GB `;
+                    if (availableGB >= 22) {
+                        output += '✅\n';
+                    } else {
+                        output += '❌ (Need 22+ GB free)\n';
+                    }
+                } catch (error) {
+                    output += 'Available Storage: Could not estimate (Need 22+ GB free)\n';
+                }
+            } else {
+                output += 'Available Storage: Unknown (Need 22+ GB free)\n';
+            }
+            
+            // Platform information
+            output += `Platform: ${navigator.platform}\n`;
+            output += `Hardware Concurrency: ${navigator.hardwareConcurrency || 'Unknown'} cores\n\n`;
+            
+            // Connection type
+            if ('connection' in navigator) {
+                const connection = navigator.connection;
+                output += `Connection Type: ${connection.effectiveType || 'Unknown'}\n`;
+                if (connection.saveData) {
+                    output += '⚠️ Data Saver is ON - may prevent model downloads\n';
+                }
+            }
+            
+            output += '\nMinimum Requirements:\n';
+            output += '• Operating System: Windows 10/11, macOS 13+, or Linux\n';
+            output += '• Memory: 16+ GB RAM (for CPU) OR 4+ GB VRAM (for GPU)\n';
+            output += '• Storage: 22+ GB free space\n';
+            output += '• Network: Unmetered connection for initial download\n';
+            output += '• Chrome: Version 138 or later\n\n';
+            
+            output += 'If requirements are met but API still not working:\n';
+            output += '1. Check chrome://on-device-internals/ for model status\n';
+            output += '2. Try clearing Chrome data and re-downloading models\n';
+            output += '3. Ensure no VPN or proxy blocking downloads\n';
+            
+            showResults('environmentResults', output, 'info');
+        }
+
+        // Auto-check environment on load
+        window.addEventListener('load', () => {
+            setTimeout(checkEnvironment, 500);
+        });
+    </script>
+</body>
+</html>

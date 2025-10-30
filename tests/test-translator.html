@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translator API Test (Popup Context)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4285f4;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #4285f4;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #555;
+            font-size: 18px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .success {
+            color: #0f9d58;
+            font-weight: bold;
+        }
+        .error {
+            color: #db4437;
+            font-weight: bold;
+        }
+        .warning {
+            color: #f4b400;
+            font-weight: bold;
+        }
+        .info {
+            color: #4285f4;
+            font-weight: bold;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status-badge.supported {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status-badge.not-supported {
+            background: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Chrome Translator API Test (Extension Popup Context)</h1>
+        <p>This test verifies that Chrome's Built-in Translator API works correctly in a Chrome Extension popup context.</p>
+        
+        <!-- API Support Check -->
+        <div class="test-section">
+            <h2>1. API Support Check</h2>
+            <button onclick="checkAPISupport()">Check Translator API Support</button>
+            <div id="supportResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Availability Check -->
+        <div class="test-section">
+            <h2>2. Language Pair Availability Check</h2>
+            <div class="input-group">
+                <label>Source Language:</label>
+                <select id="availSource">
+                    <option value="en">English (en)</option>
+                    <option value="es">Spanish (es)</option>
+                    <option value="fr">French (fr)</option>
+                    <option value="de">German (de)</option>
+                    <option value="it">Italian (it)</option>
+                    <option value="pt">Portuguese (pt)</option>
+                    <option value="ja">Japanese (ja)</option>
+                    <option value="ko">Korean (ko)</option>
+                    <option value="zh">Chinese Simplified (zh)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Target Language:</label>
+                <select id="availTarget">
+                    <option value="es">Spanish (es)</option>
+                    <option value="en">English (en)</option>
+                    <option value="fr">French (fr)</option>
+                    <option value="de">German (de)</option>
+                    <option value="it">Italian (it)</option>
+                    <option value="pt">Portuguese (pt)</option>
+                    <option value="ja">Japanese (ja)</option>
+                    <option value="ko">Korean (ko)</option>
+                    <option value="zh">Chinese Simplified (zh)</option>
+                </select>
+            </div>
+            <button onclick="checkAvailability()">Check Availability</button>
+            <div id="availabilityResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Translation Test -->
+        <div class="test-section">
+            <h2>3. Translation Test</h2>
+            <div class="input-group">
+                <label>Text to Translate:</label>
+                <textarea id="translateText">Hello, this is a test of the Chrome Translator API in an extension popup context. The API should work seamlessly here.</textarea>
+            </div>
+            <div class="input-group">
+                <label>Source Language:</label>
+                <select id="translateSource">
+                    <option value="en">English (en)</option>
+                    <option value="es">Spanish (es)</option>
+                    <option value="fr">French (fr)</option>
+                    <option value="de">German (de)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Target Language:</label>
+                <select id="translateTarget">
+                    <option value="es">Spanish (es)</option>
+                    <option value="en">English (en)</option>
+                    <option value="fr">French (fr)</option>
+                    <option value="de">German (de)</option>
+                </select>
+            </div>
+            <button onclick="testTranslation()">Translate</button>
+            <div id="translationResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Language Detection Test -->
+        <div class="test-section">
+            <h2>4. Language Detection Test</h2>
+            <div class="input-group">
+                <label>Text to Detect:</label>
+                <textarea id="detectText">This is a test of the language detection API.</textarea>
+            </div>
+            <button onclick="testLanguageDetection()">Detect Language</button>
+            <div id="detectionResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Full Workflow Test -->
+        <div class="test-section">
+            <h2>5. Full Workflow Test (Multi-step)</h2>
+            <p>Tests the complete workflow: Detect source language → Check availability → Translate</p>
+            <div class="input-group">
+                <label>Text to Translate:</label>
+                <textarea id="workflowText">Hello! How are you doing today? This is a complete workflow test.</textarea>
+            </div>
+            <div class="input-group">
+                <label>Target Language:</label>
+                <select id="workflowTarget">
+                    <option value="es">Spanish (es)</option>
+                    <option value="fr">French (fr)</option>
+                    <option value="de">German (de)</option>
+                    <option value="it">Italian (it)</option>
+                    <option value="pt">Portuguese (pt)</option>
+                </select>
+            </div>
+            <button onclick="testFullWorkflow()">Run Full Workflow</button>
+            <div id="workflowResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Check if Translator API is supported
+        async function checkAPISupport() {
+            const resultDiv = document.getElementById('supportResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="info">Checking API support...</div>';
+
+            try {
+                const support = {
+                    window: typeof window !== 'undefined',
+                    Translator: 'Translator' in window,
+                    LanguageDetector: 'LanguageDetector' in window,
+                    translatorType: typeof window.Translator,
+                    languageDetectorType: typeof window.LanguageDetector,
+                    userAgent: navigator.userAgent,
+                    chromeVersion: getChromeVersion()
+                };
+
+                let html = '<div class="success">✅ API Support Check Complete</div>\n';
+                html += `<strong>Window Object:</strong> ${support.window ? '✅ Available' : '❌ Not Available'}\n`;
+                html += `<strong>Translator API:</strong> ${support.Translator ? '✅ Supported' : '❌ Not Supported'} (${support.translatorType})\n`;
+                html += `<strong>LanguageDetector API:</strong> ${support.LanguageDetector ? '✅ Supported' : '❌ Not Supported'} (${support.languageDetectorType})\n`;
+                html += `<strong>Chrome Version:</strong> ${support.chromeVersion || 'Unknown'}\n`;
+                html += `<strong>User Agent:</strong> ${support.userAgent}\n`;
+
+                if (!support.Translator) {
+                    html += '\n<div class="error">❌ Translator API not available. Requirements:</div>';
+                    html += '• Chrome 138+ required\n';
+                    html += '• Enable chrome://flags/#translation-api\n';
+                    html += '• Restart Chrome after enabling flag\n';
+                }
+
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Check language pair availability
+        async function checkAvailability() {
+            const resultDiv = document.getElementById('availabilityResult');
+            const sourceLang = document.getElementById('availSource').value;
+            const targetLang = document.getElementById('availTarget').value;
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="info">Checking availability...</div>';
+
+            try {
+                if (!window.Translator) {
+                    throw new Error('Translator API not available');
+                }
+
+                const availability = await window.Translator.availability({
+                    sourceLanguage: sourceLang,
+                    targetLanguage: targetLang
+                });
+
+                let html = `<div class="success">✅ Availability Check Complete</div>\n`;
+                html += `<strong>Language Pair:</strong> ${sourceLang} → ${targetLang}\n`;
+                html += `<strong>Availability:</strong> ${availability}\n\n`;
+
+                if (availability === 'readily') {
+                    html += '<div class="success">✅ Ready to use immediately!</div>';
+                } else if (availability === 'after-download') {
+                    html += '<div class="warning">⚠️ Model needs to be downloaded first (will happen automatically)</div>';
+                } else if (availability === 'no') {
+                    html += '<div class="error">❌ This language pair is not available on this device</div>';
+                }
+
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>\n${error.stack}`;
+            }
+        }
+
+        // Test translation
+        async function testTranslation() {
+            const resultDiv = document.getElementById('translationResult');
+            const text = document.getElementById('translateText').value;
+            const sourceLang = document.getElementById('translateSource').value;
+            const targetLang = document.getElementById('translateTarget').value;
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="info">Translating...</div>';
+
+            try {
+                if (!window.Translator) {
+                    throw new Error('Translator API not available');
+                }
+
+                // Check availability first
+                const availability = await window.Translator.availability({
+                    sourceLanguage: sourceLang,
+                    targetLanguage: targetLang
+                });
+
+                let html = `<div class="info">Creating translator for ${sourceLang} → ${targetLang}...</div>\n`;
+                html += `<strong>Availability:</strong> ${availability}\n\n`;
+                resultDiv.innerHTML = html;
+
+                if (availability === 'no') {
+                    throw new Error(`Language pair ${sourceLang} → ${targetLang} is not available`);
+                }
+
+                // Create translator
+                const translator = await window.Translator.create({
+                    sourceLanguage: sourceLang,
+                    targetLanguage: targetLang
+                });
+
+                html += '<div class="info">Translator created, performing translation...</div>\n';
+                resultDiv.innerHTML = html;
+
+                // Perform translation
+                const translated = await translator.translate(text);
+
+                html = '<div class="success">✅ Translation Complete!</div>\n';
+                html += `<strong>Original (${sourceLang}):</strong>\n${text}\n\n`;
+                html += `<strong>Translated (${targetLang}):</strong>\n${translated}\n`;
+
+                resultDiv.innerHTML = html;
+
+                // Clean up
+                translator.destroy();
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Translation Failed: ${error.message}</div>\n${error.stack || ''}`;
+            }
+        }
+
+        // Test language detection
+        async function testLanguageDetection() {
+            const resultDiv = document.getElementById('detectionResult');
+            const text = document.getElementById('detectText').value;
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="info">Detecting language...</div>';
+
+            try {
+                if (!window.LanguageDetector) {
+                    throw new Error('LanguageDetector API not available');
+                }
+
+                const detector = await window.LanguageDetector.create();
+                const results = await detector.detect(text);
+
+                let html = '<div class="success">✅ Language Detection Complete!</div>\n';
+                html += `<strong>Text:</strong> ${text}\n\n`;
+                html += '<strong>Detection Results:</strong>\n';
+
+                results.forEach((result, index) => {
+                    html += `${index + 1}. ${result.detectedLanguage} (confidence: ${(result.confidence * 100).toFixed(1)}%)\n`;
+                });
+
+                resultDiv.innerHTML = html;
+
+                // Clean up
+                detector.destroy();
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Detection Failed: ${error.message}</div>\n${error.stack || ''}`;
+            }
+        }
+
+        // Test full workflow
+        async function testFullWorkflow() {
+            const resultDiv = document.getElementById('workflowResult');
+            const text = document.getElementById('workflowText').value;
+            const targetLang = document.getElementById('workflowTarget').value;
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="info">Starting full workflow...</div>';
+
+            let log = '';
+
+            try {
+                // Step 1: Detect source language
+                log += '<strong>Step 1: Detecting source language...</strong>\n';
+                resultDiv.innerHTML = log;
+
+                if (!window.LanguageDetector) {
+                    throw new Error('LanguageDetector API not available');
+                }
+
+                const detector = await window.LanguageDetector.create();
+                const results = await detector.detect(text);
+                const sourceLang = results[0].detectedLanguage;
+                const confidence = results[0].confidence;
+
+                log += `✅ Detected: ${sourceLang} (confidence: ${(confidence * 100).toFixed(1)}%)\n\n`;
+                resultDiv.innerHTML = log;
+
+                detector.destroy();
+
+                // Step 2: Check if translation is needed
+                if (sourceLang === targetLang) {
+                    log += '<div class="warning">⚠️ Source and target languages are the same. No translation needed.</div>';
+                    resultDiv.innerHTML = log;
+                    return;
+                }
+
+                // Step 3: Check availability
+                log += '<strong>Step 2: Checking language pair availability...</strong>\n';
+                resultDiv.innerHTML = log;
+
+                if (!window.Translator) {
+                    throw new Error('Translator API not available');
+                }
+
+                const availability = await window.Translator.availability({
+                    sourceLanguage: sourceLang,
+                    targetLanguage: targetLang
+                });
+
+                log += `✅ Availability: ${availability}\n\n`;
+                resultDiv.innerHTML = log;
+
+                if (availability === 'no') {
+                    throw new Error(`Language pair ${sourceLang} → ${targetLang} is not available`);
+                }
+
+                // Step 4: Create translator and translate
+                log += '<strong>Step 3: Creating translator and translating...</strong>\n';
+                resultDiv.innerHTML = log;
+
+                const translator = await window.Translator.create({
+                    sourceLanguage: sourceLang,
+                    targetLanguage: targetLang
+                });
+
+                const translated = await translator.translate(text);
+
+                log += '<div class="success">✅ Full Workflow Complete!</div>\n\n';
+                log += `<strong>Original (${sourceLang}):</strong>\n${text}\n\n`;
+                log += `<strong>Translated (${targetLang}):</strong>\n${translated}\n`;
+
+                resultDiv.innerHTML = log;
+
+                translator.destroy();
+            } catch (error) {
+                log += `<div class="error">❌ Workflow Failed: ${error.message}</div>\n${error.stack || ''}`;
+                resultDiv.innerHTML = log;
+            }
+        }
+
+        // Get Chrome version
+        function getChromeVersion() {
+            const match = navigator.userAgent.match(/Chrome\/(\d+)/);
+            return match ? parseInt(match[1]) : null;
+        }
+
+        // Auto-check support on load
+        window.addEventListener('load', () => {
+            console.log('Test page loaded - ready to test Translator API in extension popup context');
+            checkAPISupport();
+        });
+    </script>
+</body>
+</html>

@@ -11,6 +11,7 @@
   width: 100%;
   overflow-wrap: break-word;
   word-wrap: break-word;
+  padding-right: 35px; /* Make room for copy button */
 }
 
 /* Headers */

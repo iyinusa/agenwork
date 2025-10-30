@@ -315,6 +315,78 @@
           return await tempAgents.testAllAgents();
         }
       };
+
+      // Quick smart triage demo
+      window.demoSmartTriage = async function() {
+        console.log('🎯 Smart Triage Demo');
+        console.log('Try these examples in your extension:');
+        console.log('1. "Give me a brief overview in German" → Summarize then translate to German');
+        console.log('2. "Provide a Spanish summary" → Summarize then translate to Spanish');  
+        console.log('3. "Research AI and write about it" → Research then write content');
+        console.log('4. "Just summarize this page" → Single-step summarization');
+        console.log('5. "Translate to French and summarize" → Parallel translation and summarization');
+        
+        // Test one example if possible
+        if (window.aiAgents && typeof window.aiAgents.smartTriage === 'function') {
+          console.log('\n🧪 Testing: "Give me a brief overview in German"');
+          try {
+            const result = await window.aiAgents.detectSmartIntent('Give me a brief overview in German');
+            console.log('🧠 Smart analysis result:', {
+              primary: result.primary,
+              isMultiStep: result.isMultiStep,
+              executionType: result.executionType,
+              planSteps: result.executionPlan?.length || 0,
+              finalLanguage: result.finalOutputLanguage
+            });
+            return result;
+          } catch (error) {
+            console.warn('Demo analysis failed (this is normal if AI model is not available):', error.message);
+          }
+        }
+      };
+
+      // Test smart triage system
+      window.testSmartTriage = async function() {
+        console.log('=== Testing Smart Triage System ===');
+        if (window.aiAgents && typeof window.aiAgents.smartTriage === 'function') {
+          const testCases = [
+            'Give me a brief overview in German',
+            'Translate this to Spanish and summarize it',
+            'Provide a French summary of this page',
+            'Research machine learning and write about it',
+            'Just summarize this page'
+          ];
+          
+          console.log('Testing smart triage with sample requests...');
+          const results = [];
+          
+          for (const testCase of testCases) {
+            console.log(`\n🧪 Testing: "${testCase}"`);
+            try {
+              const result = await window.aiAgents.smartTriage(testCase);
+              console.log('✅ Result:', {
+                isMultiStep: result.intentAnalysis.isMultiStep,
+                executionType: result.executionType,
+                steps: result.results.length,
+                successful: result.processingStats.successfulSteps || result.processingStats.successfulAgents
+              });
+              results.push({ testCase, success: true, result });
+            } catch (error) {
+              console.error('❌ Failed:', error.message);
+              results.push({ testCase, success: false, error: error.message });
+            }
+          }
+          
+          console.log('\n📊 Smart Triage Test Summary:');
+          const successful = results.filter(r => r.success).length;
+          console.log(`✅ Successful: ${successful}/${results.length}`);
+          
+          return results;
+        } else {
+          console.error('❌ Smart triage not available');
+          return null;
+        }
+      };
     }
 
     // Start initialization

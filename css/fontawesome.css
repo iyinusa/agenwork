@@ -63,6 +63,7 @@
 .fa-gear:before { content: "\f013"; }
 .fa-clock:before { content: "\f017"; }
 .fa-eye:before { content: "\f06e"; }
+.fa-copy:before { content: "\f0c5"; }
 .fa-sparkles:before { content: "\f890"; }
 .fa-file-text:before,
 .fa-file-lines:before { content: "\f15c"; }

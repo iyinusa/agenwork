@@ -177,6 +177,49 @@ function initializePopup() {
     console.log('  • debugAIAgents() - Show multi-agent system debug info');
     console.log('  • testSummarizer() - Test the summarizer agent specifically');
     console.log('  • diagnoseSummarizer() - Run detailed summarizer diagnostics');
+
+    // Add translator-specific debugging
+    window.testTranslator = async function() {
+      console.log('🧪 Testing Translator Agent specifically...');
+      if (window.aiAgents && window.aiAgents.translator && typeof window.aiAgents.translator.testTranslator === 'function') {
+        return await window.aiAgents.translator.testTranslator();
+      } else {
+        console.error('❌ Translator agent not available for testing');
+        return null;
+      }
+    };
+
+    window.diagnoseTranslator = async function() {
+      console.log('🩺 Running Translator diagnostics...');
+      if (window.aiAgents && window.aiAgents.translator && typeof window.aiAgents.translator.diagnose === 'function') {
+        return await window.aiAgents.translator.diagnose();
+      } else {
+        console.error('❌ Translator agent not available for diagnostics');
+        return null;
+      }
+    };
+
+    // Add language detection testing
+    window.testLanguageDetection = async function(text = "Hello, how are you today?") {
+      console.log('🔍 Testing Language Detection...');
+      if (window.aiAgents && window.aiAgents.translator && typeof window.aiAgents.translator.detectLanguage === 'function') {
+        try {
+          const result = await window.aiAgents.translator.detectLanguage(text);
+          console.log(`✅ Detected language: ${result.language} (confidence: ${result.confidence})`);
+          return result;
+        } catch (error) {
+          console.error('❌ Language detection failed:', error);
+          return { error: error.message };
+        }
+      } else {
+        console.error('❌ Translator agent not available for language detection');
+        return null;
+      }
+    };
+
+    console.log('  • testTranslator() - Test the translator agent specifically');
+    console.log('  • diagnoseTranslator() - Run detailed translator diagnostics');
+    console.log('  • testLanguageDetection(text) - Test language detection on text');
   }
 }
 
@@ -592,63 +635,50 @@ async function processMessage(message) {
     console.log('⚠️ Could not get page context:', error);
   }
   
-  // Use Multi-Agent Coordination System
-  updateStatus('Starting multi-agent coordination...', 'processing');
+  // Use Enhanced Smart Multi-Agent Coordination System
+  updateStatus('Starting smart multi-agent coordination...', 'processing');
   let coordinationResult;
   
   try {
-    console.log('🎯 Initiating multi-agent coordination...');
-    coordinationResult = await aiAgents.coordinateTask(message, pageContext);
-    console.log('✅ Multi-agent coordination completed:', coordinationResult);
+    console.log('🧠 Initiating smart multi-agent coordination with enhanced triage...');
+    // Use smart triage if available, fallback to regular coordination
+    if (typeof aiAgents.smartTriage === 'function') {
+      coordinationResult = await aiAgents.smartTriage(message, pageContext);
+    } else {
+      console.warn('⚠️ Smart triage not available, using regular coordination');
+      coordinationResult = await aiAgents.coordinateTask(message, pageContext);
+    }
+    console.log('✅ Smart multi-agent coordination completed:', coordinationResult);
     
     // Process the coordination result
     let finalResponse = '';
     const intentInfo = coordinationResult.intentAnalysis;
     const stats = coordinationResult.processingStats;
     
-    // Add multi-agent processing info to response
+    // Add smart multi-agent processing info to response
     if (intentInfo.aiPowered) {
-      finalResponse += `*🤖 Multi-Agent Analysis: ${intentInfo.reasoning} (${(intentInfo.confidence * 100).toFixed(0)}% confidence)*\n`;
-      finalResponse += `*🎯 Agents deployed: ${stats.totalAgents} | Successful: ${stats.successfulAgents} | Failed: ${stats.failedAgents}*\n\n`;
+      const multiStepInfo = stats.isMultiStep ? ` | Multi-step ${coordinationResult.executionType}` : '';
+      finalResponse += `*� Smart AI Analysis: ${intentInfo.reasoning} (${(intentInfo.confidence * 100).toFixed(0)}% confidence)*\n`;
+      finalResponse += `*🎯 Agents deployed: ${stats.totalAgents} | Successful: ${stats.successfulAgents} | Failed: ${stats.failedAgents}${multiStepInfo}*\n\n`;
     } else {
       finalResponse += `*📋 Pattern-based analysis: ${intentInfo.reasoning}*\n`;
       finalResponse += `*🎯 Agents deployed: ${stats.totalAgents}*\n\n`;
     }
     
-    // Process all results from the multi-agent system
-    let primaryResponseAdded = false;
-    
-    for (const result of coordinationResult.results) {
-      if (result.type === 'primary') {
-        if (result.success) {
-          finalResponse += `**${result.intent.toUpperCase()} Agent Result:**\n${result.result}`;
-          primaryResponseAdded = true;
-        } else {
-          finalResponse += `**${result.intent.toUpperCase()} Agent Error:**\n${result.result}`;
-          console.error(`Primary agent (${result.intent}) failed:`, result.error);
-        }
-      } else if (result.type === 'secondary') {
-        finalResponse += `\n\n---\n**Additional ${result.intent.toUpperCase()} Agent Result:**\n`;
-        if (result.success) {
-          finalResponse += result.result;
-        } else {
-          finalResponse += `Error: ${result.result}`;
-          console.error(`Secondary agent (${result.intent}) failed:`, result.error);
-        }
-      }
-    }
-    
-    // Ensure we have some response
-    if (!primaryResponseAdded) {
-      finalResponse += '\n\n*No agents were able to successfully process your request. Please try rephrasing your message.*';
-    }
+    // Use the smart result formatter from the AI agents
+    const mainResult = aiAgents.getDisplayableResult(coordinationResult);
+    // finalResponse += mainResult;
+    finalResponse = mainResult;
     
     // Update status based on results
     if (stats.successfulAgents > 0) {
       if (stats.failedAgents > 0) {
-        updateStatus(`Partially completed (${stats.successfulAgents}/${stats.totalAgents} agents)`, 'warning');
+        updateStatus(`Partially completed (${stats.successfulAgents}/${stats.totalAgents} ${stats.isMultiStep ? 'steps' : 'agents'})`, 'warning');
       } else {
-        updateStatus('Multi-agent processing completed', 'success');
+        const statusMessage = stats.isMultiStep ? 
+          `Smart multi-step processing completed (${coordinationResult.executionType})` : 
+          'Multi-agent processing completed';
+        updateStatus(statusMessage, 'success');
       }
     } else {
       updateStatus('All agents failed', 'error');
@@ -1113,6 +1143,17 @@ function addMessageToChat(message, sender, agentType = 'prompter') {
   }
   
   bubble.appendChild(contentDiv);
+  
+  // Add copy button for agent messages
+  if (sender === 'agent') {
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-response-btn';
+    copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+    copyBtn.title = 'Copy formatted response';
+    copyBtn.addEventListener('click', () => copyResponseToClipboard(contentDiv, copyBtn));
+    bubble.appendChild(copyBtn);
+  }
+  
   messageElement.appendChild(avatar);
   messageElement.appendChild(bubble);
   
@@ -1195,6 +1236,63 @@ Visit our [documentation](https://example.com) for more details.
 **Try it yourself!** Ask me anything and see how responses are now beautifully formatted with professional markdown styling. 🚀`;
 
   addMessageToChat(demoContent, 'agent');
+}
+
+// Copy response to clipboard
+async function copyResponseToClipboard(contentElement, button) {
+  try {
+    // Get the HTML content from the rendered markdown
+    const htmlContent = contentElement.innerHTML;
+    
+    // Get plain text as fallback
+    const plainText = contentElement.textContent || contentElement.innerText;
+    
+    // Create a ClipboardItem with both HTML and plain text
+    const html = new Blob([htmlContent], { type: 'text/html' });
+    const text = new Blob([plainText], { type: 'text/plain' });
+    
+    const clipboardItem = new ClipboardItem({
+      'text/html': html,
+      'text/plain': text
+    });
+    
+    await navigator.clipboard.write([clipboardItem]);
+    
+    // Visual feedback
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i>';
+    button.classList.add('copied');
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      button.innerHTML = originalHTML;
+      button.classList.remove('copied');
+    }, 2000);
+    
+    showNotification('Response copied with formatting!', 'success');
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error);
+    
+    // Fallback: try copying plain text only
+    try {
+      const plainText = contentElement.textContent || contentElement.innerText;
+      await navigator.clipboard.writeText(plainText);
+      
+      const originalHTML = button.innerHTML;
+      button.innerHTML = '<i class="fas fa-check"></i>';
+      button.classList.add('copied');
+      
+      setTimeout(() => {
+        button.innerHTML = originalHTML;
+        button.classList.remove('copied');
+      }, 2000);
+      
+      showNotification('Response copied as plain text', 'success');
+    } catch (fallbackError) {
+      console.error('Fallback copy also failed:', fallbackError);
+      showNotification('Failed to copy to clipboard', 'error');
+    }
+  }
 }
 
 // Update status
@@ -2081,3 +2179,21 @@ function showNotification(message, type = 'info') {
     }, 300);
   }, 3000);
 }
+
+// Test translation dispatch - for debugging
+window.testTranslationDispatch = async function() {
+  try {
+    console.log('Testing translation dispatch...');
+    if (window.aiAgents && window.aiAgents.core) {
+      const result = await window.aiAgents.core.processUserMessage('translate this to spanish: Hello world');
+      console.log('Translation dispatch result:', result);
+      return result;
+    } else {
+      console.error('AI Agents not initialized');
+      return null;
+    }
+  } catch (error) {
+    console.error('Translation dispatch test failed:', error);
+    return null;
+  }
+};

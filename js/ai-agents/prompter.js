@@ -143,16 +143,34 @@ class PrompterAgent {
 INTENT CATEGORIES:
 1. "summarize" - User wants to summarize content (page, article, text, document)
 2. "translate" - User wants to translate text or page content to another language
-3. "write" - User wants help writing, composing, drafting, or creating content
+3. "write" - User wants help writing, composing, drafting, or creating content (emails, cover letters, blog posts, etc.)
 4. "research" - User wants to research, learn about, or get information on a topic
 
 CLASSIFICATION RULES:
 - If the user mentions summarize, summary, tldr, overview, brief, main points, or wants to condense content → "summarize"
 - If the user mentions translate, translation, convert language, or specific language names → "translate"  
-- If the user mentions write, compose, draft, create, generate, or help with writing → "write"
+- If the user mentions write, compose, draft, create, generate, help with writing, or wants content creation → "write"
 - If the user mentions research, find, search, learn, explain, tell me about, what is → "research"
 - A message can have multiple intents - identify the primary one and any secondary intents
 - Consider context clues and implied meanings
+
+WRITE INTENT DETECTION:
+When the intent is "write", look for these specific patterns:
+- Email-related: "draft email", "compose email", "help write email", "email response", "reply to email"
+- Cover letter: "cover letter", "job application letter", "application for job"
+- Creative writing: "creative writing", "write story", "write blog", "blog post"
+- Business: "write proposal", "draft report", "create document", "write article"
+- Social: "social media post", "tweet", "facebook post", "instagram caption"
+- Content improvement: "rewrite", "improve this", "make this better", "enhance content"
+- General: "help me write", "create content", "generate text", "compose"
+
+WRITE INTENT EXAMPLES:
+- "Help me draft an email response" → primary: "write", crafted_prompt: "Draft a professional email response"
+- "Write a cover letter for this job" → primary: "write", crafted_prompt: "Generate a compelling cover letter for the job description"
+- "Create a blog post about AI" → primary: "write", crafted_prompt: "Write an engaging blog post about artificial intelligence"
+- "Compose a professional email" → primary: "write", crafted_prompt: "Compose a formal professional email"
+- "Generate a social media post" → primary: "write", crafted_prompt: "Create an engaging social media post"
+- "Rewrite this better" → primary: "write", crafted_prompt: "Improve and rewrite the provided content"
 
 SUMMARIZATION TYPE DETECTION:
 When the intent is "summarize", also determine the specific summarization type:
@@ -182,6 +200,16 @@ When the intent is "translate", also determine:
 - Target language: Extract the language the user wants to translate TO (e.g., "translate to Spanish" → target_language: "es")
 - Source language: Extract the language they want to translate FROM (e.g., "translate from French" → source_language: "fr"), use "auto" if not specified
 - Language codes: Use ISO 639-1 codes (en=English, es=Spanish, fr=French, de=German, it=Italian, pt=Portuguese, ru=Russian, ja=Japanese, ko=Korean, zh=Chinese, ar=Arabic, hi=Hindi, tr=Turkish, pl=Polish, nl=Dutch, sv=Swedish, da=Danish, no=Norwegian, fi=Finnish)
+
+TRANSLATION EXAMPLES FOR DETECTION:
+- "Translate this to Spanish" → target_language: "es", source_language: "auto"  
+- "Convert from French to English" → target_language: "en", source_language: "fr"
+- "Translate this page to Japanese" → target_language: "ja", source_language: "auto"
+- "Change this from German to Italian" → target_language: "it", source_language: "de"
+- "Put this in Chinese" → target_language: "zh", source_language: "auto"
+- "Make this Russian" → target_language: "ru", source_language: "auto"
+- "Translate to my language" → target_language: user's preferred language, source_language: "auto"
+- "Convert to English" → target_language: "en", source_language: "auto"
 
 RESPONSE FORMAT:
 Respond with a JSON object containing:
@@ -359,22 +387,39 @@ Analyze this message and respond with the JSON classification:`;
         ]
       },
       translate: {
-        keywords: ['translate', 'translation', 'convert', 'language'],
+        keywords: ['translate', 'translation', 'convert', 'language', 'spanish', 'french', 'german', 'italian', 'portuguese', 'russian', 'japanese', 'chinese', 'korean', 'arabic', 'hindi', 'english'],
         patterns: [
           /translate (this|the|current)? ?(page|text|content)? ?(to|into|in) ?\w+/i,
-          /(spanish|french|german|chinese|japanese|italian|portuguese)\s+(translation|version)/i,
+          /translate (this|the|current)? ?(page|text|content)?$/i,
+          /(spanish|french|german|chinese|japanese|italian|portuguese|russian|korean|arabic|hindi|english)\s+(translation|version)/i,
           /what does this mean in \w+/i,
-          /convert to \w+ language/i
+          /convert (this|the|current)? ?(page|text|content)? ?(to|into|in) ?\w+/i,
+          /convert to \w+ language/i,
+          /make (this|it) (spanish|french|german|chinese|japanese|italian|portuguese|russian|korean|arabic|hindi|english)/i,
+          /put (this|it) in (spanish|french|german|chinese|japanese|italian|portuguese|russian|korean|arabic|hindi|english)/i,
+          /(from|in) (spanish|french|german|chinese|japanese|italian|portuguese|russian|korean|arabic|hindi|english) to (spanish|french|german|chinese|japanese|italian|portuguese|russian|korean|arabic|hindi|english)/i,
+          /change language to \w+/i,
+          /to (my )?language/i
         ]
       },
       write: {
-        keywords: ['write', 'compose', 'draft', 'create', 'help me write', 'generate'],
+        keywords: ['write', 'compose', 'draft', 'create', 'help me write', 'generate', 'email', 'letter', 'cover letter', 'blog', 'post', 'article', 'response', 'reply'],
         patterns: [
           /help me write (a|an)? ?\w+/i,
           /compose (a|an)? ?\w+/i,
           /draft (a|an)? ?\w+/i,
           /create (a|an)? ?\w+/i,
-          /generate (a|an)? ?\w+/i
+          /generate (a|an)? ?\w+/i,
+          /write (a|an)? ?(email|letter|blog|post|article|response|reply|cover\s*letter|proposal|report)/i,
+          /draft (email|letter|blog|post|article|response|reply|cover\s*letter|proposal|report)/i,
+          /(email|letter|blog|post|article) (response|reply)/i,
+          /cover\s*letter/i,
+          /job\s*application/i,
+          /help (with|me) writ/i,
+          /compose\s+(email|message|letter|text)/i,
+          /create\s+(content|post|article|blog)/i,
+          /write about/i,
+          /generate\s+(text|content|post|email)/i
         ]
       },
       research: {
@@ -393,14 +438,19 @@ Analyze this message and respond with the JSON classification:`;
     const lowerMessage = message.toLowerCase();
     const scores = {};
     
+    console.log('🔍 Pattern matching for message:', message);
+    console.log('📋 Available intents:', Object.keys(intents));
+    
     // Score each intent
     for (const [intent, config] of Object.entries(intents)) {
       let score = 0;
+      const matches = [];
       
       // Check keywords
       for (const keyword of config.keywords) {
         if (lowerMessage.includes(keyword)) {
           score += 1;
+          matches.push(`keyword: "${keyword}"`);
         }
       }
       
@@ -408,16 +458,24 @@ Analyze this message and respond with the JSON classification:`;
       for (const pattern of config.patterns) {
         if (pattern.test(message)) {
           score += 2;
+          matches.push(`pattern: ${pattern}`);
         }
       }
       
       scores[intent] = score;
+      
+      if (score > 0) {
+        console.log(`✅ ${intent}: score=${score}, matches=[${matches.join(', ')}]`);
+      }
     }
     
     // Sort intents by score and identify primary and secondary intents
     const sortedIntents = Object.entries(scores)
       .filter(([intent, score]) => score > 0)
       .sort(([,a], [,b]) => b - a);
+    
+    console.log('📊 All scores:', scores);
+    console.log('🏆 Sorted intents:', sortedIntents);
     
     let topIntent = 'research'; // default
     let maxScore = 0;
@@ -427,6 +485,8 @@ Analyze this message and respond with the JSON classification:`;
       topIntent = sortedIntents[0][0];
       maxScore = sortedIntents[0][1];
       
+      console.log(`🎯 Selected primary intent: ${topIntent} (score: ${maxScore})`);
+      
       // Add secondary intents
       for (let i = 1; i < sortedIntents.length; i++) {
         const [intent, score] = sortedIntents[i];
@@ -434,6 +494,12 @@ Analyze this message and respond with the JSON classification:`;
           secondary.push(intent);
         }
       }
+      
+      if (secondary.length > 0) {
+        console.log(`🔄 Secondary intents: ${secondary.join(', ')}`);
+      }
+    } else {
+      console.log('⚠️ No intents matched, using default: research');
     }
     
     // Detect summarization-specific parameters
@@ -493,7 +559,11 @@ Analyze this message and respond with the JSON classification:`;
     let sourceLanguage = 'auto';
     
     if (topIntent === 'translate' || secondary.includes('translate')) {
-      targetLanguage = AIUtils.extractTargetLanguage(message, this.preferredLanguage);
+      // Enhanced language detection patterns
+      targetLanguage = this.extractTargetLanguageEnhanced(message, this.preferredLanguage);
+      sourceLanguage = this.extractSourceLanguageEnhanced(message);
+      
+      console.log(`🌐 Detected translation parameters - Target: ${targetLanguage}, Source: ${sourceLanguage}`);
     }
     
     return { 
@@ -509,6 +579,146 @@ Analyze this message and respond with the JSON classification:`;
       targetLanguage: targetLanguage,
       sourceLanguage: sourceLanguage
     };
+  }
+
+  // Pattern-based multi-step intent detection (fallback when AI unavailable)
+  detectMultiStepIntentFallback(message) {
+    console.log('🔍 Pattern-based multi-step detection for:', message);
+    const lowerMessage = message.toLowerCase();
+    
+    // Multi-step patterns for summarize + translate
+    const summaryTranslatePatterns = [
+      // "in [language]" patterns
+      { regex: /\b(brief|short|quick|overview|summary|summarize|tldr)\s+in\s+(german|spanish|french|italian|portuguese|russian|japanese|korean|chinese|arabic|hindi|turkish|polish|dutch|swedish|danish|norwegian|finnish)\b/i, agents: ['summarizer', 'translator'] },
+      // "[language] summary" patterns  
+      { regex: /\b(german|spanish|french|italian|portuguese|russian|japanese|korean|chinese|arabic|hindi|turkish|polish|dutch|swedish|danish|norwegian|finnish)\s+(brief|short|overview|summary)\b/i, agents: ['summarizer', 'translator'] },
+      // "give me [language]" patterns
+      { regex: /\b(give|show|provide)\s+me\s+(a\s+)?(german|spanish|french|italian|portuguese|russian|japanese|korean|chinese|arabic|hindi|turkish|polish|dutch|swedish|danish|norwegian|finnish)\s+(brief|short|overview|summary)\b/i, agents: ['summarizer', 'translator'] },
+      // "summarize in [language]"
+      { regex: /\bsummarize\s+(this|the|it|that|page|article|content)?\s*(in|to)\s+(german|spanish|french|italian|portuguese|russian|japanese|korean|chinese|arabic|hindi|turkish|polish|dutch|swedish|danish|norwegian|finnish)\b/i, agents: ['summarizer', 'translator'] },
+      // "tell me about [topic] in [language]"
+      { regex: /\b(tell|explain)\s+me\s+about\s+.+\s+in\s+(german|spanish|french|italian|portuguese|russian|japanese|korean|chinese|arabic|hindi|turkish|polish|dutch|swedish|danish|norwegian|finnish)\b/i, agents: ['summarizer', 'translator'] },
+    ];
+    
+    // Check for summary + translate patterns
+    for (const pattern of summaryTranslatePatterns) {
+      if (pattern.regex.test(lowerMessage)) {
+        console.log('✅ Multi-step pattern detected: Summarize → Translate');
+        
+        // Extract target language
+        const languageMap = {
+          'german': 'de', 'spanish': 'es', 'french': 'fr', 'italian': 'it',
+          'portuguese': 'pt', 'russian': 'ru', 'japanese': 'ja', 'korean': 'ko',
+          'chinese': 'zh', 'arabic': 'ar', 'hindi': 'hi', 'turkish': 'tr',
+          'polish': 'pl', 'dutch': 'nl', 'swedish': 'sv', 'danish': 'da',
+          'norwegian': 'no', 'finnish': 'fi'
+        };
+        
+        let targetLang = null;
+        for (const [langName, langCode] of Object.entries(languageMap)) {
+          if (lowerMessage.includes(langName)) {
+            targetLang = langCode;
+            break;
+          }
+        }
+        
+        // Detect summary length and type
+        let summaryLength = 'medium';
+        let summaryType = 'key-points';
+        
+        if (lowerMessage.includes('brief') || lowerMessage.includes('short') || lowerMessage.includes('quick')) {
+          summaryLength = 'short';
+          summaryType = 'tldr';
+        } else if (lowerMessage.includes('detailed') || lowerMessage.includes('comprehensive')) {
+          summaryLength = 'long';
+        }
+        
+        return {
+          primary: 'summarize',
+          secondary: ['translate'],
+          isMultiStep: true,
+          executionType: 'sequential',
+          executionPlan: [
+            {
+              step: 1,
+              agent: 'summarizer',
+              action: 'summarize_page',
+              input: 'current_page',
+              output: 'summary_text',
+              params: {
+                type: summaryType,
+                length: summaryLength
+              }
+            },
+            {
+              step: 2,
+              agent: 'translator',
+              action: 'translate_text',
+              input: 'summary_text',
+              output: 'final_result',
+              params: {
+                target_language: targetLang,
+                source_language: 'auto'
+              }
+            }
+          ],
+          finalOutputLanguage: targetLang,
+          reasoning: 'Pattern-based detection: User wants page summarized then translated',
+          confidence: 0.88,
+          aiPowered: false,
+          originalMessage: message
+        };
+      }
+    }
+    
+    // Check for explicit "summarize and translate" or "translate and summarize"
+    if ((lowerMessage.includes('summarize') && lowerMessage.includes('translate')) ||
+        (lowerMessage.includes('summary') && lowerMessage.includes('translat'))) {
+      console.log('✅ Multi-step pattern detected: Summarize + Translate (ambiguous order)');
+      
+      const targetLang = this.extractTargetLanguageEnhanced(message, this.preferredLanguage);
+      
+      // Determine if sequential (summarize first) or parallel based on context
+      const isSequential = lowerMessage.includes('then') || 
+                          lowerMessage.includes('and then') ||
+                          lowerMessage.match(/summarize.+translate/i);
+      
+      if (isSequential) {
+        return {
+          primary: 'summarize',
+          secondary: ['translate'],
+          isMultiStep: true,
+          executionType: 'sequential',
+          executionPlan: [
+            {
+              step: 1,
+              agent: 'summarizer',
+              action: 'summarize_page',
+              input: 'current_page',
+              output: 'summary_text',
+              params: { type: 'key-points', length: 'medium' }
+            },
+            {
+              step: 2,
+              agent: 'translator',
+              action: 'translate_text',
+              input: 'summary_text',
+              output: 'final_result',
+              params: { target_language: targetLang, source_language: 'auto' }
+            }
+          ],
+          finalOutputLanguage: targetLang,
+          reasoning: 'Pattern-based: Summarize then translate (sequential)',
+          confidence: 0.85,
+          aiPowered: false,
+          originalMessage: message
+        };
+      }
+    }
+    
+    // No multi-step pattern detected
+    console.log('ℹ️ No multi-step pattern detected in fallback');
+    return null;
   }
 
   // Handle research queries using the prompter
@@ -723,6 +933,164 @@ Please provide a comprehensive response:`;
         capabilities: capabilities || null
       };
     }
+  }
+
+  // Enhanced target language extraction with comprehensive pattern matching
+  extractTargetLanguageEnhanced(message, preferredLanguage = 'en') {
+    const lowerMessage = message.toLowerCase();
+    
+    // Language mapping with multiple variations
+    const languageMap = {
+      // English variations
+      'en': ['english', 'en', 'eng'],
+      // Spanish variations  
+      'es': ['spanish', 'español', 'es', 'spa', 'castilian'],
+      // French variations
+      'fr': ['french', 'français', 'fr', 'fra', 'francais'],
+      // German variations
+      'de': ['german', 'deutsch', 'de', 'ger', 'deu'],
+      // Italian variations
+      'it': ['italian', 'italiano', 'it', 'ita'],
+      // Portuguese variations
+      'pt': ['portuguese', 'português', 'pt', 'por', 'portugues'],
+      // Russian variations
+      'ru': ['russian', 'русский', 'ru', 'rus'],
+      // Japanese variations
+      'ja': ['japanese', '日本語', 'ja', 'jpn', 'nihongo'],
+      // Korean variations
+      'ko': ['korean', '한국어', 'ko', 'kor', 'hangul'],
+      // Chinese variations
+      'zh': ['chinese', '中文', 'zh', 'chi', 'mandarin', 'cantonese'],
+      // Arabic variations
+      'ar': ['arabic', 'العربية', 'ar', 'ara'],
+      // Hindi variations
+      'hi': ['hindi', 'हिन्दी', 'hi', 'hin'],
+      // Turkish variations
+      'tr': ['turkish', 'türkçe', 'tr', 'tur', 'turkce'],
+      // Polish variations
+      'pl': ['polish', 'polski', 'pl', 'pol'],
+      // Dutch variations
+      'nl': ['dutch', 'nederlands', 'nl', 'nld', 'flemish'],
+      // Swedish variations
+      'sv': ['swedish', 'svenska', 'sv', 'swe'],
+      // Danish variations
+      'da': ['danish', 'dansk', 'da', 'dan'],
+      // Norwegian variations
+      'no': ['norwegian', 'norsk', 'no', 'nor'],
+      // Finnish variations
+      'fi': ['finnish', 'suomi', 'fi', 'fin']
+    };
+
+    // Look for "to [language]" or "in [language]" patterns
+    const toPattern = /(?:to|into|in)\s+(\w+)/gi;
+    const matches = [...lowerMessage.matchAll(toPattern)];
+    
+    for (const match of matches) {
+      const langWord = match[1].toLowerCase();
+      for (const [code, variations] of Object.entries(languageMap)) {
+        if (variations.some(variation => variation === langWord || langWord.includes(variation))) {
+          console.log(`🎯 Found target language: ${langWord} → ${code}`);
+          return code;
+        }
+      }
+    }
+
+    // Look for "make it [language]" or "convert to [language]" patterns  
+    const makePattern = /(?:make\s+(?:it|this)|convert\s+(?:to|into))\s+(\w+)/gi;
+    const makeMatches = [...lowerMessage.matchAll(makePattern)];
+    
+    for (const match of makeMatches) {
+      const langWord = match[1].toLowerCase();
+      for (const [code, variations] of Object.entries(languageMap)) {
+        if (variations.some(variation => variation === langWord || langWord.includes(variation))) {
+          console.log(`🎯 Found target language via convert pattern: ${langWord} → ${code}`);
+          return code;
+        }
+      }
+    }
+
+    // Check for standalone language mentions
+    for (const [code, variations] of Object.entries(languageMap)) {
+      for (const variation of variations) {
+        if (lowerMessage.includes(variation) && variation.length > 2) { // Avoid short false positives
+          console.log(`🎯 Found target language via standalone: ${variation} → ${code}`);
+          return code;
+        }
+      }
+    }
+
+    // Special patterns
+    if (lowerMessage.includes('my language') || lowerMessage.includes('native language')) {
+      console.log(`🎯 Using user's preferred language: ${preferredLanguage}`);
+      return preferredLanguage;
+    }
+
+    // Default fallback
+    console.log(`🎯 No target language detected, using preferred: ${preferredLanguage}`);
+    return preferredLanguage;
+  }
+
+  // Enhanced source language extraction  
+  extractSourceLanguageEnhanced(message) {
+    const lowerMessage = message.toLowerCase();
+    
+    // Same language mapping as above
+    const languageMap = {
+      'en': ['english', 'en', 'eng'],
+      'es': ['spanish', 'español', 'es', 'spa', 'castilian'],
+      'fr': ['french', 'français', 'fr', 'fra', 'francais'],
+      'de': ['german', 'deutsch', 'de', 'ger', 'deu'],
+      'it': ['italian', 'italiano', 'it', 'ita'],
+      'pt': ['portuguese', 'português', 'pt', 'por', 'portugues'],
+      'ru': ['russian', 'русский', 'ru', 'rus'],
+      'ja': ['japanese', '日本語', 'ja', 'jpn', 'nihongo'],
+      'ko': ['korean', '한국어', 'ko', 'kor', 'hangul'],
+      'zh': ['chinese', '中文', 'zh', 'chi', 'mandarin', 'cantonese'],
+      'ar': ['arabic', 'العربية', 'ar', 'ara'],
+      'hi': ['hindi', 'हिन्दी', 'hi', 'hin'],
+      'tr': ['turkish', 'türkçe', 'tr', 'tur', 'turkce'],
+      'pl': ['polish', 'polski', 'pl', 'pol'],
+      'nl': ['dutch', 'nederlands', 'nl', 'nld', 'flemish'],
+      'sv': ['swedish', 'svenska', 'sv', 'swe'],
+      'da': ['danish', 'dansk', 'da', 'dan'],
+      'no': ['norwegian', 'norsk', 'no', 'nor'],
+      'fi': ['finnish', 'suomi', 'fi', 'fin']
+    };
+
+    // Look for "from [language]" patterns
+    const fromPattern = /(?:from|out\s+of)\s+(\w+)/gi;
+    const matches = [...lowerMessage.matchAll(fromPattern)];
+    
+    for (const match of matches) {
+      const langWord = match[1].toLowerCase();
+      for (const [code, variations] of Object.entries(languageMap)) {
+        if (variations.some(variation => variation === langWord || langWord.includes(variation))) {
+          console.log(`🔍 Found source language: ${langWord} → ${code}`);
+          return code;
+        }
+      }
+    }
+
+    // Look for "[language] to [language]" patterns  
+    const langToLangPattern = /(\w+)\s+to\s+\w+/gi;
+    const langMatches = [...lowerMessage.matchAll(langToLangPattern)];
+    
+    for (const match of langMatches) {
+      const langWord = match[1].toLowerCase();
+      // Skip common non-language words
+      if (['this', 'that', 'it', 'text', 'page', 'content'].includes(langWord)) continue;
+      
+      for (const [code, variations] of Object.entries(languageMap)) {
+        if (variations.some(variation => variation === langWord || langWord.includes(variation))) {
+          console.log(`🔍 Found source language via pattern: ${langWord} → ${code}`);
+          return code;
+        }
+      }
+    }
+
+    // Default to auto-detection
+    console.log(`🔍 No source language specified, using auto-detection`);
+    return 'auto';
   }
 }
 

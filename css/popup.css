@@ -460,6 +460,68 @@ body {
   border-color: var(--primary-color);
 }
 
+/* Copy Response Button */
+.copy-response-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  width: 30px;
+  height: 30px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.3;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+  font-size: 13px;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.message.agent .message-bubble:hover .copy-response-btn {
+  opacity: 1;
+}
+
+.copy-response-btn:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px rgba(102, 126, 234, 0.3);
+}
+
+.copy-response-btn:active {
+  transform: scale(0.95);
+}
+
+.copy-response-btn.copied {
+  background: var(--success-color);
+  color: white;
+  border-color: var(--success-color);
+  opacity: 1;
+}
+
+.copy-response-btn i {
+  pointer-events: none;
+}
+
+[data-theme="dark"] .copy-response-btn {
+  background: rgba(40, 40, 40, 0.95);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .copy-response-btn:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
 /* Input Area */
 .input-area {
   padding: var(--spacing-md);
@@ -562,9 +624,11 @@ body {
 .typing-indicator {
   display: none;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md) 0;
-  margin-top: var(--spacing-sm);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) 0;
+  margin-top: var(--spacing-xs);
+  margin-left: var(--spacing-md);
+  margin-right: var(--spacing-sm);
   opacity: 0;
   transform: translateY(10px);
   transition: all 0.3s ease;

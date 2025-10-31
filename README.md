@@ -67,7 +67,6 @@
 ### AI Agent Capabilities
 
 #### ✅ Summarizer Agent (Fully Implemented)
-
 - Intelligent content extraction from web pages
 - Multiple summary types: **key-points**, **tldr**, **teaser**, **headline**
 - Configurable lengths: **short**, **medium**, **long**
@@ -75,21 +74,18 @@
 - Context-aware summarization with metadata
 
 #### ✅ Translator Agent (Fully Implemented)
-
 - Real-time language detection
 - Multi-language translation support
 - Batch translation capabilities
 - Seamless integration with Chrome Translator API
 
 #### ✅ Prompter Agent (Fully Implemented)
-
 - General-purpose conversational AI
 - Intent classification and routing
 - Context-aware responses
 - Prompt engineering optimization
 
 #### 🚧 Writer Agent (In Development)
-
 - Writing assistance and content generation
 - Style adaptation and grammar checking
 - Future Chrome Writer API integration
@@ -108,7 +104,7 @@
 ### Recommended Requirements (Full AI Functionality)
 
 - **Browser**: Chrome 138+ (Stable release with Built-in AI APIs)
-- **OS**:
+- **OS**: 
   - Windows 10/11
   - macOS 13+ (Ventura or later)
   - Linux (kernel 4.18+)
@@ -124,7 +120,6 @@
 ### Option 1: Install from Source (Development Mode)
 
 1. **Clone the Repository**
-
    ```bash
    git clone https://github.com/iyinusa/agenwork.git
    cd agenwork
@@ -165,7 +160,6 @@
 ### Common Use Cases
 
 #### Summarization
-
 ```
 "Summarize this page"
 "Give me the key points of this article"
@@ -175,7 +169,6 @@
 ```
 
 #### Translation
-
 ```
 "Translate to Spanish: Hello world"
 "What language is this: Bonjour"
@@ -183,7 +176,6 @@
 ```
 
 #### General Queries
-
 ```
 "Explain quantum computing"
 "What is machine learning?"
@@ -199,26 +191,22 @@
 Run the included test suite to verify functionality:
 
 1. **Test AI Implementation**
-
    ```bash
    # Open in Chrome
    chrome tests/test-ai-implementation.html
    ```
 
 2. **Test Database Operations**
-
    ```bash
    chrome tests/test-database.html
    ```
 
 3. **Test Prompt API**
-
    ```bash
    chrome tests/test-prompt-api.html
    ```
 
 4. **Test Translator Agent**
-
    ```bash
    chrome tests/test-translator.html
    ```
@@ -232,7 +220,6 @@ Run the included test suite to verify functionality:
 3. Try these sample prompts:
 
 **Sample Test Prompts:**
-
 ```
 ✅ "Summarize this page"
 ✅ "Give me key points of this article"
@@ -245,7 +232,6 @@ Run the included test suite to verify functionality:
 ```
 
 **Expected Results:**
-
 - ✅ Intent detection identifies summarization request
 - ✅ Appropriate summary type and length are detected
 - ✅ Content is intelligently extracted from the page
@@ -255,7 +241,6 @@ Run the included test suite to verify functionality:
 #### Test Translator Agent
 
 **Sample Test Prompts:**
-
 ```
 ✅ "Translate to Spanish: Hello, how are you?"
 ✅ "Detect language: Bonjour le monde"
@@ -266,7 +251,6 @@ Run the included test suite to verify functionality:
 #### Test Prompter Agent
 
 **Sample Test Prompts:**
-
 ```
 ✅ "What is artificial intelligence?"
 ✅ "Explain neural networks"
@@ -277,14 +261,12 @@ Run the included test suite to verify functionality:
 ### Debugging
 
 Enable verbose logging:
-
 ```javascript
 // In browser console (DevTools)
 localStorage.setItem('agenwork_debug', 'true');
 ```
 
 Check AI model status:
-
 ```
 chrome://on-device-internals/
 ```
@@ -295,41 +277,9 @@ chrome://on-device-internals/
 
 ### System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     AgenWork Extension                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │  Popup UI  │───▶│   Core AI    │───▶│   Storage    │   │
-│  │ (popup.js) │    │   Agents     │    │  (DexieJS)   │   │
-│  └────────────┘    │  (core.js)   │    └──────────────┘   │
-│                    └──────┬───────┘                        │
-│                           │                                │
-│         ┌─────────────────┼─────────────────┐              │
-│         │                 │                 │              │
-│   ┌─────▼──────┐   ┌─────▼──────┐   ┌─────▼──────┐       │
-│   │Summarizer  │   │Translator  │   │ Prompter   │       │
-│   │   Agent    │   │   Agent    │   │   Agent    │       │
-│   └─────┬──────┘   └─────┬──────┘   └─────┬──────┘       │
-│         │                │                 │              │
-│         └────────────────┼─────────────────┘              │
-│                          │                                │
-│                 ┌────────▼─────────┐                       │
-│                 │ Chrome AI APIs   │                       │
-│                 │ Integration      │                       │
-│                 └──────────────────┘                       │
-│                          │                                │
-└──────────────────────────┼─────────────────────────────────┘
-                           │
-              ┌────────────▼────────────┐
-              │  Chrome Built-in AI     │
-              │  - Summarizer API       │
-              │  - Translator API       │
-              │  - Language Model API   │
-              │  - Writer API (Future)  │
-              └─────────────────────────┘
-```
+<div align="center">
+  <img src="images/System Architecture.png" alt="AgenWork System Architecture" width="100%"/>
+</div>
 
 ### Module Structure
 
@@ -487,27 +437,21 @@ Contributions are welcome! Please follow these guidelines:
 
 1. **Fork the repository**
 2. **Create a feature branch**
-
    ```bash
    git checkout -b feature/your-feature-name
    ```
-
 3. **Make your changes**
    - Follow the existing code style
    - Add tests for new features
    - Update documentation as needed
 4. **Commit your changes**
-
    ```bash
    git commit -m "feat: add your feature description"
    ```
-
 5. **Push to your fork**
-
    ```bash
    git push origin feature/your-feature-name
    ```
-
 6. **Open a Pull Request**
 
 ### Development Guidelines
@@ -579,7 +523,6 @@ See [LICENSE](LICENSE) for the full license text.
 ## 🗺️ Roadmap
 
 ### Current Version (v1.1.0)
-
 - ✅ Multi-agent system architecture
 - ✅ Summarizer agent with enhanced capabilities
 - ✅ Translator agent with language detection
@@ -588,7 +531,6 @@ See [LICENSE](LICENSE) for the full license text.
 - ✅ Floating icon UI component
 
 ### Upcoming Features (v1.2.0)
-
 - 🚧 Writer agent integration
 - 🚧 Context menu integration
 - 🚧 Keyboard shortcuts
@@ -596,7 +538,6 @@ See [LICENSE](LICENSE) for the full license text.
 - 🚧 Custom agent configurations
 
 ### Future Vision (v2.0.0)
-
 - 📋 Multi-tab coordination
 - 📋 Agent plugin system
 - 📋 Advanced analytics

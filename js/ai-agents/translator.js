@@ -155,15 +155,9 @@ class TranslatorAgent {
         throw new Error(`The language pair ${sourceLang} → ${targetLang} is not available on this device. Chrome's AI may not support this combination yet.`);
       }
       
-      // Now do comprehensive check through ChromeIntegration
-      const availabilityResult = await ChromeIntegration.validateAPIReadiness('Translator', checkOptions);
-      console.log('✅ Translator comprehensive check result:', availabilityResult);
-
-      if (!availabilityResult.passed) {
-        throw new Error(`Translator API comprehensive check failed: ${availabilityResult.error}`);
-      }
-
-      if (availabilityResult.availability === 'after-download') {
+      // According to the test pattern, we should proceed directly to creating translator
+      // after the direct availability check passes
+      if (directAvailability === 'after-download') {
         console.log('⬇️ Translation model needs to be downloaded first - this may take time');
       }
 
@@ -173,6 +167,7 @@ class TranslatorAgent {
       }
 
       // Default options for translator according to Chrome documentation
+      // This matches exactly how the test creates the translator
       const translatorOptions = {
         sourceLanguage: sourceLang,
         targetLanguage: targetLang,
@@ -187,9 +182,9 @@ class TranslatorAgent {
         }
       };
 
-      console.log('Creating translator with options:', translatorOptions);
+      console.log('🛠️ Creating translator with options:', translatorOptions);
       
-      // Create translator using Chrome Built-in AI pattern
+      // Create translator using Chrome Built-in AI pattern - same as test
       // Note: Language pair availability is only known after trying to create
       this.translator = await window.Translator.create(translatorOptions);
       
@@ -239,41 +234,35 @@ class TranslatorAgent {
         throw new Error('Window object not available - running outside browser context');
       }
       
-      // Comprehensive availability check for LanguageDetector
-      const langDetectorResult = await ChromeIntegration.checkComprehensiveAvailability('LanguageDetector');
-      console.log('LanguageDetector comprehensive check result:', langDetectorResult);
-
-      if (!langDetectorResult.supported) {
-        throw new Error('Language Detection API is not available in this browser. Please ensure you have Chrome 138+ and the Built-in AI APIs are enabled.');
-      }
-
-      // Check availability
+      // Check availability directly - same as test pattern
       const availability = await window.LanguageDetector.availability();
-      console.log('Language Detector availability:', availability);
+      console.log('📊 Language Detector availability:', availability);
 
       if (availability === 'no') {
         throw new Error('Language Detection API is not available on this device.');
       }
 
       if (availability === 'after-download') {
-        console.log('Language detection model needs to be downloaded first');
+        console.log('⬇️ Language detection model needs to be downloaded first');
       }
 
-      // Create language detector
+      // Create language detector - same as test pattern
       const detector = await window.LanguageDetector.create({
         monitor: (m) => {
           m.addEventListener('downloadprogress', (e) => {
             console.log(`Language detection model download: ${(e.loaded * 100).toFixed(1)}%`);
-            AIUtils.notifyProgress('language-detector', e.loaded * 100);
+            if (typeof AIUtils !== 'undefined' && AIUtils.notifyProgress) {
+              AIUtils.notifyProgress('language-detector', e.loaded * 100);
+            }
           });
         }
       });
 
-      console.log('Language detector created successfully');
+      console.log('✅ Language detector created successfully');
       return detector;
 
     } catch (error) {
-      console.error('Error creating language detector:', error);
+      console.error('❌ Error creating language detector:', error);
       throw new Error(`Failed to create language detector: ${error.message}`);
     }
   }

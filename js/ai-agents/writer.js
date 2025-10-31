@@ -178,11 +178,14 @@ class WriterAgent {
         'Format the output in markdown with proper headings, lists, and emphasis where appropriate.' :
         'Format the output as plain text.';
 
+      // Regular content writing only - no code generation
       const systemPrompt = `You are a professional writing assistant. ${toneGuidance} ${lengthGuidance} ${formatGuidance}
 
 ${context ? `Context: ${context}\n\n` : ''}Write content for the following request:
 
-${prompt}`;
+${prompt}
+
+IMPORTANT: Focus on written content only. Do not generate code, scripts, or programming examples.`;
 
       // Use LanguageModel to generate content
       const languageModel = await window.LanguageModel.create({
@@ -196,7 +199,7 @@ ${prompt}`;
       console.log('✅ Content generated using LanguageModel fallback');
       
       // Format result as markdown
-      return `**Generated Content**\n\n${content}\n\n*Written with AI assistance (LanguageModel fallback)*`;
+      return `**Generated Content**\n\n${content}\n\n*Written with AI assistance*`;
 
     } catch (fallbackError) {
       console.error('❌ Fallback writing failed:', fallbackError);

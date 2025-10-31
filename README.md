@@ -277,41 +277,9 @@ chrome://on-device-internals/
 
 ### System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     AgenWork Extension                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │  Popup UI  │───▶│   Core AI    │───▶│   Storage    │   │
-│  │ (popup.js) │    │   Agents     │    │  (DexieJS)   │   │
-│  └────────────┘    │  (core.js)   │    └──────────────┘   │
-│                    └──────┬───────┘                        │
-│                           │                                │
-│         ┌─────────────────┼─────────────────┐              │
-│         │                 │                 │              │
-│   ┌─────▼──────┐   ┌─────▼──────┐   ┌─────▼──────┐       │
-│   │Summarizer  │   │Translator  │   │ Prompter   │       │
-│   │   Agent    │   │   Agent    │   │   Agent    │       │
-│   └─────┬──────┘   └─────┬──────┘   └─────┬──────┘       │
-│         │                │                 │              │
-│         └────────────────┼─────────────────┘              │
-│                          │                                │
-│                 ┌────────▼─────────┐                       │
-│                 │ Chrome AI APIs   │                       │
-│                 │ Integration      │                       │
-│                 └──────────────────┘                       │
-│                          │                                │
-└──────────────────────────┼─────────────────────────────────┘
-                           │
-              ┌────────────▼────────────┐
-              │  Chrome Built-in AI     │
-              │  - Summarizer API       │
-              │  - Translator API       │
-              │  - Language Model API   │
-              │  - Writer API (Future)  │
-              └─────────────────────────┘
-```
+<div align="center">
+  <img src="images/System Architecture.png" alt="AgenWork System Architecture" width="100%"/>
+</div>
 
 ### Module Structure
 

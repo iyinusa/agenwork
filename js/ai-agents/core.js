@@ -240,6 +240,12 @@ CRITICAL MULTI-STEP PATTERNS - Always detect these as multi-step:
 - "Write in [language] about": RESEARCH → WRITE in target language (sequential)
 - "Explain in [language]": RESEARCH → TRANSLATE (sequential)
 - "Tell me about [topic] in [language]": RESEARCH → TRANSLATE (sequential)
+- "Summarize and write [code/sample/example]": SUMMARIZE → WRITE (sequential)
+- "Summarize this page and write [code/sample/example]": SUMMARIZE → WRITE (sequential)
+- "Brief summary and create [code/sample]": SUMMARIZE → WRITE (sequential)
+- "Overview and generate [code/sample]": SUMMARIZE → WRITE (sequential)
+- "Explain and show [code/example]": RESEARCH → WRITE (sequential)
+- "Research [topic] and write code": RESEARCH → WRITE (sequential)
 
 EXECUTION TYPES:
 - "sequential": Output of first agent becomes input of second agent (USE THIS when one task needs the result of another)
@@ -426,6 +432,64 @@ Response: {
   "finalOutputLanguage": "zh",
   "reasoning": "Requires summarization then translation to Chinese - sequential execution",
   "confidence": 0.90
+}
+
+User: "Briefly summarize this page and write sample code for my JavaScript app"
+Response: {
+  "primary": "summarize",
+  "secondary": ["write"],
+  "isMultiStep": true,
+  "executionType": "sequential",
+  "executionPlan": [
+    {
+      "step": 1,
+      "agent": "summarizer",
+      "action": "summarize_page",
+      "input": "current_page",
+      "output": "summary_text",
+      "params": {"type": "tldr", "length": "short"}
+    },
+    {
+      "step": 2,
+      "agent": "writer",
+      "action": "write_content",
+      "input": "summary_text",
+      "output": "final_result",
+      "params": {"content_type": "code", "language": "javascript", "purpose": "sample code for JavaScript app based on page content"}
+    }
+  ],
+  "finalOutputLanguage": null,
+  "reasoning": "User wants page summarized first, then use that summary to write sample JavaScript code - sequential execution required",
+  "confidence": 0.93
+}
+
+User: "Give me an overview and create a code example"
+Response: {
+  "primary": "summarize",
+  "secondary": ["write"],
+  "isMultiStep": true,
+  "executionType": "sequential",
+  "executionPlan": [
+    {
+      "step": 1,
+      "agent": "summarizer",
+      "action": "summarize_page",
+      "input": "current_page",
+      "output": "summary_text",
+      "params": {"type": "key-points", "length": "medium"}
+    },
+    {
+      "step": 2,
+      "agent": "writer",
+      "action": "write_content",
+      "input": "summary_text",
+      "output": "final_result",
+      "params": {"content_type": "code", "language": "auto", "purpose": "code example based on page content"}
+    }
+  ],
+  "finalOutputLanguage": null,
+  "reasoning": "User wants overview first, then code example based on that overview - sequential execution",
+  "confidence": 0.88
 }`;
 
       // Add page context if available
@@ -449,7 +513,7 @@ Analyze this message and provide the smart triage plan as JSON:`;
       
       try {
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Smart triage timeout after 30 seconds')), 30000)
+          setTimeout(() => reject(new Error('Smart triage timeout after 120 seconds')), 120000)
         );
         
         const promptPromise = this.prompter.prompt(fullPrompt);
@@ -611,7 +675,13 @@ Analyze this message and provide the smart triage plan as JSON:`;
         // Add processing note in markdown format for multi-step operations
         if (successfulResults.length > 1) {
           const agentChain = successfulResults.map(r => r.agent).join(' → ');
-          const processingNote = `\n\n---\n\n*✨ Smart Multi-Step Processing:* Completed ${successfulResults.length}-step operation\n*🔗 Agent Chain:* ${agentChain}`;
+          const processingNote = `\n\n---\n\n*✨ Multi-Step Processing Completed*\n*🔗 Agent Chain:* ${agentChain}\n*📊 Steps:* ${successfulResults.length}`;
+          
+          // Add language info if this was a translation operation
+          if (coordinationResult.finalOutputLanguage) {
+            return resultText + processingNote + `\n*🌐 Output Language:* ${coordinationResult.finalOutputLanguage}`;
+          }
+          
           return resultText + processingNote;
         }
         
@@ -972,8 +1042,11 @@ Your request: "${userMessage}"
               summarizationLength: params.length || 'medium'
             };
             const pageResult = await this.summarizeCurrentPage(summarizeIntent);
-            // Return markdown-formatted result as in single-step operations
-            return `**${pageResult.title}**\n\n${pageResult.summary}\n\n*Source: ${pageResult.url}*\n*Word count: ${pageResult.wordCount}*`;
+            
+            // For multi-step operations, return just the summary text for clean chaining
+            // The final result formatting will be done by the last step
+            console.log('📄 Summary generated, returning clean text for chaining');
+            return pageResult.summary; // Return just the summary text, not formatted
           } else if (action === 'summarize_text') {
             const summarizeIntent = {
               summarizationType: params.type || 'key-points', 
@@ -1010,20 +1083,16 @@ Your request: "${userMessage}"
             return `**Translation of "${result.title}"**\n\n${result.translation.translatedText}\n\n*Translated from ${result.sourceLanguage} to ${result.targetLanguage}*`;
             
           } else if (action === 'translate_text') {
-            // For translate_text, input should be text (from previous step - could be markdown)
-            // Extract just the text content if it has markdown metadata
-            let textToTranslate = input;
+            // For translate_text, input should be text (from previous step)
+            // Since we now return clean text from summarizer, we can use it directly
+            const textToTranslate = typeof input === 'string' ? input : String(input);
             
-            if (typeof input === 'string') {
-              // Remove metadata lines that start with asterisks but keep the main content
-              textToTranslate = input
-                .split('\n')
-                .filter(line => !line.match(/^\*[^*]/)) // Remove single asterisk metadata lines
-                .join('\n')
-                .replace(/^\*\*.*?\*\*\n+/g, '') // Remove bold headers at start
-                .trim();
-                
-              console.log('📝 Text prepared for translation (length):', textToTranslate.length);
+            console.log('📝 Input to translate_text (length):', textToTranslate.length);
+            console.log('📝 Text preview:', textToTranslate.substring(0, 200) + '...');
+            
+            // Validate we have text to translate
+            if (!textToTranslate || textToTranslate.trim().length === 0) {
+              throw new Error('No text content found to translate');
             }
             
             const result = await this.translateText(
@@ -1037,13 +1106,17 @@ Your request: "${userMessage}"
               return `**Translation Result**\n\n${result.message || 'Translation skipped'}`;
             }
             
-            // Return markdown-formatted translation result like single-step operations
+            // Extract the translated text
             const translatedText = typeof result.translatedText === 'string' ? result.translatedText :
                                   (result && typeof result === 'object' ? 
                                    (result.text || result.translation || JSON.stringify(result)) :
                                    String(result || 'Translation completed but no text returned'));
             
-            return `**Translation**\n\n${translatedText}\n\n*Translated to ${params.target_language}*`;
+            console.log('✅ Translation completed (length):', translatedText.length);
+            console.log('✅ Translated text preview:', translatedText.substring(0, 200) + '...');
+            
+            // Return the translated text with formatting for display
+            return `**Translation (${params.target_language})**\n\n${translatedText}`;
           }
           break;
           

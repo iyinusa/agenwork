@@ -110,7 +110,7 @@ class SummarizerAgent {
       // Create summarizer with timeout protection
       const createPromise = window.Summarizer.create(finalOptions);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Summarizer creation timeout after 30 seconds')), 30000)
+        setTimeout(() => reject(new Error('Summarizer creation timeout after 120 seconds')), 120000)
       );
       
       this.summarizer = await Promise.race([createPromise, timeoutPromise]);

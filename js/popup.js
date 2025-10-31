@@ -429,6 +429,17 @@ function initializeEventListeners() {
   const messageInput = document.getElementById('messageInput');
   const sendBtn = document.getElementById('sendBtn');
   
+  // Auto-resize textarea as user types
+  function autoResizeTextarea() {
+    messageInput.style.height = 'auto';
+    messageInput.style.height = messageInput.scrollHeight + 'px';
+  }
+  
+  messageInput.addEventListener('input', function() {
+    sendBtn.disabled = this.value.trim() === '';
+    autoResizeTextarea();
+  });
+  
   messageInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -436,13 +447,36 @@ function initializeEventListeners() {
     }
   });
   
-  messageInput.addEventListener('input', function() {
-    sendBtn.disabled = this.value.trim() === '';
-  });
-  
   sendBtn.addEventListener('click', sendMessage);
   
-  // Quick action buttons
+  // Accordion functionality
+  document.querySelectorAll('.accordion-header').forEach(header => {
+    header.addEventListener('click', function() {
+      const accordionItem = this.parentElement;
+      const isActive = accordionItem.classList.contains('active');
+      
+      // Close all accordions
+      document.querySelectorAll('.accordion-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // Toggle current accordion
+      if (!isActive) {
+        accordionItem.classList.add('active');
+      }
+    });
+  });
+  
+  // Prompt buttons inside accordions
+  document.querySelectorAll('.prompt-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const action = this.dataset.action;
+      const prompt = this.dataset.prompt;
+      handlePromptAction(action, prompt);
+    });
+  });
+  
+  // Legacy quick action buttons (for backward compatibility)
   document.querySelectorAll('.quick-action-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       const action = this.dataset.action;
@@ -561,6 +595,7 @@ async function sendMessage() {
   
   // Clear input and disable send button
   messageInput.value = '';
+  messageInput.style.height = 'auto'; // Reset height after sending
   document.getElementById('sendBtn').disabled = true;
   
   // Add user message to chat
@@ -1098,6 +1133,19 @@ function handleQuickAction(action) {
   // Move cursor to end
   messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
   document.getElementById('sendBtn').disabled = false;
+}
+
+// Handle prompt action from accordion buttons
+function handlePromptAction(action, prompt) {
+  const messageInput = document.getElementById('messageInput');
+  
+  // Set the message input to the prompt
+  messageInput.value = prompt;
+  
+  // Auto-send the request after a brief delay
+  setTimeout(() => {
+    sendMessage();
+  }, 100);
 }
 
 // Add message to chat

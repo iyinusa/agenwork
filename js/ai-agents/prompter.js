@@ -247,7 +247,7 @@ Analyze this message and respond with the JSON classification:`;
       try {
         // Add a timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('AI intent detection timeout after 30 seconds')), 30000)
+          setTimeout(() => reject(new Error('AI intent detection timeout after 120 seconds')), 120000)
         );
         
         const promptPromise = this.prompter.prompt(fullPrompt);
@@ -403,14 +403,14 @@ Analyze this message and respond with the JSON classification:`;
         ]
       },
       write: {
-        keywords: ['write', 'compose', 'draft', 'create', 'help me write', 'generate', 'email', 'letter', 'cover letter', 'blog', 'post', 'article', 'response', 'reply'],
+        keywords: ['write', 'compose', 'draft', 'create', 'help me write', 'generate', 'email', 'letter', 'cover letter', 'blog', 'post', 'article', 'response', 'reply', 'code', 'sample', 'example', 'script', 'function'],
         patterns: [
           /help me write (a|an)? ?\w+/i,
           /compose (a|an)? ?\w+/i,
           /draft (a|an)? ?\w+/i,
           /create (a|an)? ?\w+/i,
           /generate (a|an)? ?\w+/i,
-          /write (a|an)? ?(email|letter|blog|post|article|response|reply|cover\s*letter|proposal|report)/i,
+          /write (a|an)? ?(email|letter|blog|post|article|response|reply|cover\s*letter|proposal|report|code|sample|example|script|function)/i,
           /draft (email|letter|blog|post|article|response|reply|cover\s*letter|proposal|report)/i,
           /(email|letter|blog|post|article) (response|reply)/i,
           /cover\s*letter/i,
@@ -419,7 +419,11 @@ Analyze this message and respond with the JSON classification:`;
           /compose\s+(email|message|letter|text)/i,
           /create\s+(content|post|article|blog)/i,
           /write about/i,
-          /generate\s+(text|content|post|email)/i
+          /generate\s+(text|content|post|email|code|sample|example)/i,
+          /(sample|example)\s+(code|script|function)/i,
+          /write\s+(sample|code|example)/i,
+          /show\s+me\s+(code|sample|example)/i,
+          /give\s+me\s+(a\s+)?(code|sample|example)/i
         ]
       },
       research: {
@@ -600,6 +604,20 @@ Analyze this message and respond with the JSON classification:`;
       { regex: /\b(tell|explain)\s+me\s+about\s+.+\s+in\s+(german|spanish|french|italian|portuguese|russian|japanese|korean|chinese|arabic|hindi|turkish|polish|dutch|swedish|danish|norwegian|finnish)\b/i, agents: ['summarizer', 'translator'] },
     ];
     
+    // Multi-step patterns for summarize + write code
+    const summaryCodePatterns = [
+      // "summarize and write/create/generate code/sample/example"
+      { regex: /\b(brief|short|overview|summary|summarize)\s+(this|the|page|article|content)?\s*and\s+(write|create|generate|show|give|provide)\s+(sample\s+)?(code|example|script|function)/i, agents: ['summarizer', 'writer'] },
+      // "brief/short summary and code"
+      { regex: /\b(brief|short|quick)\s+(summary|overview)\s+and\s+(code|sample|example|script)/i, agents: ['summarizer', 'writer'] },
+      // "summarize this page and write sample code"
+      { regex: /\bsummarize\s+(this|the|current)?\s*(page|article|content)?\s*and\s+write\s+(a\s+)?(sample|code|example)/i, agents: ['summarizer', 'writer'] },
+      // "overview and generate code"
+      { regex: /\b(overview|summary)\s+and\s+(generate|create|write)\s+(a\s+)?(code|sample|example)/i, agents: ['summarizer', 'writer'] },
+      // "explain and show code/example"
+      { regex: /\b(explain|describe|summarize)\s+(this|the|it)?\s*and\s+(show|give|provide|create)\s+(a\s+)?(code|sample|example)/i, agents: ['summarizer', 'writer'] },
+    ];
+    
     // Check for summary + translate patterns
     for (const pattern of summaryTranslatePatterns) {
       if (pattern.regex.test(lowerMessage)) {
@@ -710,6 +728,90 @@ Analyze this message and respond with the JSON classification:`;
           finalOutputLanguage: targetLang,
           reasoning: 'Pattern-based: Summarize then translate (sequential)',
           confidence: 0.85,
+          aiPowered: false,
+          originalMessage: message
+        };
+      }
+    }
+    
+    // Check for summarize + write code patterns
+    for (const pattern of summaryCodePatterns) {
+      if (pattern.regex.test(lowerMessage)) {
+        console.log('✅ Multi-step pattern detected: Summarize → Write Code');
+        
+        // Detect programming language
+        const langDetectMap = {
+          'javascript': 'javascript',
+          'js': 'javascript',
+          'python': 'python',
+          'py': 'python',
+          'java': 'java',
+          'typescript': 'typescript',
+          'ts': 'typescript',
+          'c++': 'cpp',
+          'cpp': 'cpp',
+          'c#': 'csharp',
+          'csharp': 'csharp',
+          'ruby': 'ruby',
+          'go': 'go',
+          'rust': 'rust',
+          'php': 'php',
+          'swift': 'swift',
+          'kotlin': 'kotlin'
+        };
+        
+        let detectedLang = 'auto';
+        for (const [keyword, lang] of Object.entries(langDetectMap)) {
+          if (lowerMessage.includes(keyword)) {
+            detectedLang = lang;
+            break;
+          }
+        }
+        
+        // Detect summary length and type
+        let summaryLength = 'short'; // Default to short for code generation context
+        let summaryType = 'key-points';
+        
+        if (lowerMessage.includes('brief') || lowerMessage.includes('short') || lowerMessage.includes('quick')) {
+          summaryLength = 'short';
+          summaryType = 'tldr';
+        }
+        
+        return {
+          primary: 'summarize',
+          secondary: ['write'],
+          isMultiStep: true,
+          executionType: 'sequential',
+          executionPlan: [
+            {
+              step: 1,
+              agent: 'summarizer',
+              action: 'summarize_page',
+              input: 'current_page',
+              output: 'summary_text',
+              params: {
+                type: summaryType,
+                length: summaryLength
+              }
+            },
+            {
+              step: 2,
+              agent: 'writer',
+              action: 'write_content',
+              input: 'summary_text',
+              output: 'final_result',
+              params: {
+                content_type: 'code',
+                language: detectedLang,
+                purpose: `sample code based on page content`,
+                tone: 'neutral',
+                format: 'markdown'
+              }
+            }
+          ],
+          finalOutputLanguage: null,
+          reasoning: 'Pattern-based detection: User wants page summarized then code written based on that summary',
+          confidence: 0.88,
           aiPowered: false,
           originalMessage: message
         };

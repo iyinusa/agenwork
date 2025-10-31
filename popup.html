@@ -43,23 +43,142 @@
                             </div>
                             <h2>Welcome to AgenWork</h2>
                             <p>Your intelligent multi-agent assistant powered by Chrome's built-in AI. Our specialized agents work together to understand and fulfill your requests!</p>
-                            <div class="quick-actions">
-                                <button class="quick-action-btn" data-action="summarize">
-                                    <i class="far fa-file-lines"></i>
-                                    Summarize Page
-                                </button>
-                                <button class="quick-action-btn" data-action="translate">
-                                    <i class="fas fa-language"></i>
-                                    Translate
-                                </button>
-                                <button class="quick-action-btn" data-action="write">
-                                    <i class="fas fa-pen"></i>
-                                    Help Write
-                                </button>
-                                <button class="quick-action-btn" data-action="research">
-                                    <i class="fas fa-search"></i>
-                                    Research
-                                </button>
+                            <div class="quick-actions-accordion">
+                                <!-- Summarizer Agent Accordion -->
+                                <div class="accordion-item">
+                                    <button class="accordion-header" data-agent="summarizer">
+                                        <div class="accordion-header-content">
+                                            <i class="far fa-file-lines"></i>
+                                            <span class="accordion-title">Summarizer Agent</span>
+                                        </div>
+                                        <i class="fas fa-chevron-down accordion-icon"></i>
+                                    </button>
+                                    <div class="accordion-content">
+                                        <button class="prompt-btn" data-action="summarize" data-prompt="Summarize this page in key points">
+                                            <i class="fas fa-list-ul"></i>
+                                            Key Points Summary
+                                        </button>
+                                        <button class="prompt-btn" data-action="summarize" data-prompt="Give me a TL;DR of this page">
+                                            <i class="fas fa-bolt"></i>
+                                            TL;DR Summary
+                                        </button>
+                                        <button class="prompt-btn" data-action="summarize" data-prompt="Create a detailed summary of this page">
+                                            <i class="fas fa-file-alt"></i>
+                                            Detailed Summary
+                                        </button>
+                                        <button class="prompt-btn" data-action="summarize" data-prompt="Generate a headline for this page">
+                                            <i class="fas fa-heading"></i>
+                                            Generate Headline
+                                        </button>
+                                        <button class="prompt-btn" data-action="summarize" data-prompt="Create a teaser summary for this page">
+                                            <i class="fas fa-eye"></i>
+                                            Teaser Summary
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Translator Agent Accordion -->
+                                <div class="accordion-item">
+                                    <button class="accordion-header" data-agent="translator">
+                                        <div class="accordion-header-content">
+                                            <i class="fas fa-language"></i>
+                                            <span class="accordion-title">Translator Agent</span>
+                                        </div>
+                                        <i class="fas fa-chevron-down accordion-icon"></i>
+                                    </button>
+                                    <div class="accordion-content">
+                                        <button class="prompt-btn" data-action="translate" data-prompt="Briefly summarize the page and translate to Spanish">
+                                            <i class="fas fa-spell-check"></i>
+                                            Auto-detect & Translate
+                                        </button>
+                                        <button class="prompt-btn" data-action="translate" data-prompt="Give me a TL;DR in my language">
+                                            <i class="fas fa-user-check"></i>
+                                            Translate to My Language
+                                        </button>
+                                        <button class="prompt-btn" data-action="translate" data-prompt="Detailed Summary of the page and translate to Spanish">
+                                            <i class="fas fa-spell-check"></i>
+                                            Detailed Summary & Translate
+                                        </button>
+                                        <button class="prompt-btn" data-action="translate" data-prompt="Translate this page to my preferred language">
+                                            <i class="fas fa-user-check"></i>
+                                            Translate Page to My Language
+                                        </button>
+                                        <button class="prompt-btn" data-action="translate" data-prompt="Translate this page to Spanish">
+                                            <i class="fas fa-globe"></i>
+                                            Translate Page to Spanish
+                                        </button>
+                                        <button class="prompt-btn" data-action="translate" data-prompt="Translate this page to French">
+                                            <i class="fas fa-globe"></i>
+                                            Translate Page to French
+                                        </button>
+                                        <button class="prompt-btn" data-action="translate" data-prompt="Translate this page to German">
+                                            <i class="fas fa-globe"></i>
+                                            Translate Page to German
+                                        </button>
+                                        <button class="prompt-btn" data-action="translate" data-prompt="Translate this page to Japanese">
+                                            <i class="fas fa-globe"></i>
+                                            Translate Page to Japanese
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Writer Agent Accordion -->
+                                <div class="accordion-item">
+                                    <button class="accordion-header" data-agent="writer">
+                                        <div class="accordion-header-content">
+                                            <i class="fas fa-pen"></i>
+                                            <span class="accordion-title">Writer Agent</span>
+                                        </div>
+                                        <i class="fas fa-chevron-down accordion-icon"></i>
+                                    </button>
+                                    <div class="accordion-content">
+                                        <button class="prompt-btn" data-action="write" data-prompt="Help me write a professional email on this topic">
+                                            <i class="fas fa-envelope"></i>
+                                            Write Professional Email
+                                        </button>
+                                        <button class="prompt-btn" data-action="write" data-prompt="Help me write a reply to this email">
+                                            <i class="fas fa-envelope"></i>
+                                            Write A Reply Email
+                                        </button>
+                                        <button class="prompt-btn" data-action="write" data-prompt="Help me write a cover letter for this job">
+                                            <i class="fas fa-file-alt"></i>
+                                            Write Cover Letter
+                                        </button>
+                                        <button class="prompt-btn" data-action="write" data-prompt="Expand on this topic with more details">
+                                            <i class="fas fa-expand"></i>
+                                            Expand Text
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Prompter Agent Accordion -->
+                                <div class="accordion-item">
+                                    <button class="accordion-header" data-agent="prompter">
+                                        <div class="accordion-header-content">
+                                            <i class="fas fa-brain"></i>
+                                            <span class="accordion-title">Prompter Agent</span>
+                                        </div>
+                                        <i class="fas fa-chevron-down accordion-icon"></i>
+                                    </button>
+                                    <div class="accordion-content">
+                                        <button class="prompt-btn" data-action="research" data-prompt="Research and explain Agentic Systems">
+                                            <i class="fas fa-search"></i>
+                                            Research Topic
+                                        </button>
+                                        <button class="prompt-btn" data-action="research" data-prompt="Analyze the methodology in this paper">
+                                            <i class="fas fa-analytics"></i>
+                                            Analyze Research
+                                        </button>
+                                        <button class="prompt-btn" data-action="research" data-prompt="Extract key facts from this page">
+                                            <i class="fas fa-lightbulb"></i>
+                                            Extract Key Facts
+                                        </button>
+                                        <button class="prompt-btn" data-action="research" data-prompt="Compare and contrast AI Agent and Agentic AI Systems">
+                                            <i class="fas fa-balance-scale"></i>
+                                            Compare Ideas
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -73,7 +192,7 @@
                     </div>
                     <div class="input-area">
                         <div class="input-container">
-                            <input type="text" id="messageInput" placeholder="Ask AgenWork anything..." autocomplete="off">
+                            <textarea id="messageInput" placeholder="Ask AgenWork anything..." rows="1" autocomplete="off"></textarea>
                             <button id="sendBtn" class="send-btn">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
